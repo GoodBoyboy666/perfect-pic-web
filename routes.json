@@ -1,0 +1,137 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/user/profile",
+    "handler": "perfect-pic-server/internal/handler.GetSelfInfo"
+  },
+  {
+    "method": "GET",
+    "path": "/api/user/ping",
+    "handler": "perfect-pic-server/internal/router.InitRouter.func2"
+  },
+  {
+    "method": "GET",
+    "path": "/api/user/images",
+    "handler": "perfect-pic-server/internal/handler.GetMyImages"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/settings",
+    "handler": "perfect-pic-server/internal/handler/admin.GetSettings"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/users",
+    "handler": "perfect-pic-server/internal/handler/admin.GetUserList"
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/images",
+    "handler": "perfect-pic-server/internal/handler/admin.GetImageList"
+  },
+  {
+    "method": "GET",
+    "path": "/api/ping",
+    "handler": "perfect-pic-server/internal/router.InitRouter.func1"
+  },
+  {
+    "method": "GET",
+    "path": "/api/init",
+    "handler": "perfect-pic-server/internal/handler.GetInitState"
+  },
+  {
+    "method": "GET",
+    "path": "/api/register",
+    "handler": "perfect-pic-server/internal/handler.GetRegisterState"
+  },
+  {
+    "method": "GET",
+    "path": "/api/captcha",
+    "handler": "perfect-pic-server/internal/handler.GetCaptcha"
+  },
+  {
+    "method": "GET",
+    "path": "/api/webinfo",
+    "handler": "perfect-pic-server/internal/handler.GetWebInfo"
+  },
+  {
+    "method": "GET",
+    "path": "/assets/*filepath",
+    "handler": "github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1"
+  },
+  {
+    "method": "GET",
+    "path": "/imgs/*filepath",
+    "handler": "github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1"
+  },
+  {
+    "method": "POST",
+    "path": "/api/init",
+    "handler": "perfect-pic-server/internal/handler.Init"
+  },
+  {
+    "method": "POST",
+    "path": "/api/login",
+    "handler": "perfect-pic-server/internal/handler.Login"
+  },
+  {
+    "method": "POST",
+    "path": "/api/register",
+    "handler": "perfect-pic-server/internal/handler.Register"
+  },
+  {
+    "method": "POST",
+    "path": "/api/user/upload",
+    "handler": "perfect-pic-server/internal/handler.UploadImage"
+  },
+  {
+    "method": "POST",
+    "path": "/api/admin/users",
+    "handler": "perfect-pic-server/internal/handler/admin.CreateUser"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/user/username",
+    "handler": "perfect-pic-server/internal/handler.UpdateSelfUsername"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/user/password",
+    "handler": "perfect-pic-server/internal/handler.UpdateSelfPassword"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/user/avatar",
+    "handler": "perfect-pic-server/internal/handler.UpdateSelfAvatar"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/admin/settings",
+    "handler": "perfect-pic-server/internal/handler/admin.UpdateSettings"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/admin/users/:id",
+    "handler": "perfect-pic-server/internal/handler/admin.UpdateUser"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/admin/users/:id",
+    "handler": "perfect-pic-server/internal/handler/admin.DeleteUser"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/admin/images/:id",
+    "handler": "perfect-pic-server/internal/handler/admin.DeleteImage"
+  },
+  {
+    "method": "HEAD",
+    "path": "/imgs/*filepath",
+    "handler": "github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1"
+  },
+  {
+    "method": "HEAD",
+    "path": "/assets/*filepath",
+    "handler": "github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1"
+  }
+]
