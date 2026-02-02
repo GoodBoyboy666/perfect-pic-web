@@ -85,7 +85,7 @@ const PreviewImage = ({ file }: { file: File }) => {
     return () => URL.revokeObjectURL(objectUrl)
   }, [file])
 
-  if (!src) return null
+  if (!src || !src.startsWith('blob:')) return null
 
   return (
     <img
