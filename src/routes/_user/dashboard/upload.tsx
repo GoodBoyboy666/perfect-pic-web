@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
@@ -74,15 +74,19 @@ function UploadComponent() {
   const [convert, setConvert] = useState(false)
   const [targetFormat, setTargetFormat] = useState('webp')
 
+  useEffect(() => {
+    const newPreviews = files.map((f) => URL.createObjectURL(f))
+    setPreviews(newPreviews)
+
+    return () => {
+      newPreviews.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [files])
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files)
       setFiles(selectedFiles) // Replace or append based on UX preference. Replacing for now.
-
-      // Generate previews
-      const newPreviews = selectedFiles.map((f) => URL.createObjectURL(f))
-      // Cleanup old previews if needed (React handles basic cleanup but good practice for blobs)
-      setPreviews(newPreviews)
       setUploadedResults([]) // Clear previous results
     }
   }
@@ -127,7 +131,6 @@ function UploadComponent() {
       toast.success('全部上传成功!')
       // Don't navigate away, so user can see links
       setFiles([])
-      setPreviews([])
     } catch (error: any) {
       toast.error(error.message || '部分或全部上传失败')
     } finally {
@@ -250,7 +253,12 @@ function UploadComponent() {
 
       {/* Results Area */}
       {uploadedResults.length > 0 && (
-        <motion.div variants={item} className="space-y-8">
+        <motion.div
+          variants={item}
+          initial="hidden"
+          animate="show"
+          className="space-y-8"
+        >
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold text-green-600">
               上传完成 ({uploadedResults.length})
