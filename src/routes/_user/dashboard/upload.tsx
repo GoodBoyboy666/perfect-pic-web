@@ -75,7 +75,11 @@ function UploadComponent() {
   const [targetFormat, setTargetFormat] = useState('webp')
 
   useEffect(() => {
-    const newPreviews = files.map((f) => URL.createObjectURL(f))
+    // Validate files before creating object URLs to prevent potential security issues
+    const safeFiles = files.filter(
+      (f) => f instanceof File && f.type.startsWith('image/'),
+    )
+    const newPreviews = safeFiles.map((f) => URL.createObjectURL(f))
     setPreviews(newPreviews)
 
     return () => {
@@ -84,8 +88,11 @@ function UploadComponent() {
   }, [files])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selectedFiles = Array.from(e.target.files)
+    const target = e.target
+    if (target.files && target.files.length > 0) {
+      const selectedFiles = Array.from(target.files).filter((file) =>
+        file.type.startsWith('image/'),
+      )
       setFiles(selectedFiles) // Replace or append based on UX preference. Replacing for now.
       setUploadedResults([]) // Clear previous results
     }
@@ -184,13 +191,16 @@ function UploadComponent() {
               />
               {previews.length > 0 ? (
                 <div className="grid grid-cols-3 gap-4">
-                  {previews.map((src, i) => (
-                    <img
-                      key={i}
-                      src={src}
-                      className="h-32 w-full object-cover rounded-md shadow-sm border"
-                    />
-                  ))}
+                  {previews.map((src, i) =>
+                    // Only render blob URLs to ensure safety
+                    src.startsWith('blob:') ? (
+                      <img
+                        key={i}
+                        src={src}
+                        className="h-32 w-full object-cover rounded-md shadow-sm border"
+                      />
+                    ) : null,
+                  )}
                 </div>
               ) : (
                 <div className="text-muted-foreground flex flex-col items-center">
