@@ -48,7 +48,7 @@ jobs:
 
           # --- 执行合并 ---
           echo "Merging origin/main into beta..."
-          
+
           # -S 使用上面手动配置的 signing_key 进行签名
           if git merge origin/main -S -m "Sync main to beta (Automated merge)"; then
             echo "✅ Signed Merge successful."
