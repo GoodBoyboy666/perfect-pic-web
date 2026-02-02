@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '../../../components/ui/select'
 import { Card, CardContent } from '../../../components/ui/card'
+import { motion } from 'motion/react'
 
 const convertImage = (file: File, format: string): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -140,11 +141,34 @@ function UploadComponent() {
       .then(() => toast.success('已复制到剪贴板'))
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold">批量上传图片</h2>
+    <motion.div
+      className="max-w-4xl mx-auto space-y-6"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.h2 variants={item} className="text-2xl font-bold">
+        批量上传图片
+      </motion.h2>
 
       {/* Upload Area */}
+      <motion.div variants={item}>
       {uploadedResults.length === 0 && (
         <div className="space-y-6">
           <label className="block border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:bg-muted/50 transition cursor-pointer bg-muted/10">
@@ -219,10 +243,11 @@ function UploadComponent() {
           </Button>
         </div>
       )}
+      </motion.div>
 
       {/* Results Area */}
       {uploadedResults.length > 0 && (
-        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+        <motion.div variants={item} className="space-y-8">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold text-green-600">
               上传完成 ({uploadedResults.length})
@@ -343,8 +368,8 @@ function UploadComponent() {
               </Card>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }

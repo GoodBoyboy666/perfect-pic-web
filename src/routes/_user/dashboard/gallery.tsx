@@ -30,6 +30,7 @@ import {
 } from '../../../components/ui/alert-dialog'
 import { Label } from '../../../components/ui/label'
 import { Separator } from '@/components/ui/separator'
+import { motion } from 'motion/react'
 
 export const Route = createFileRoute('/_user/dashboard/gallery')({
   component: GalleryComponent,
@@ -167,9 +168,32 @@ function GalleryComponent() {
       .then(() => toast.success('已复制到剪贴板'))
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <motion.div
+      className="space-y-6"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div
+        variants={item}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
         <div>
           <h2 className="text-3xl font-bold tracking-tight">我的画廊</h2>
           <p className="text-muted-foreground">查看和管理您上传的所有图片</p>
@@ -210,10 +234,13 @@ function GalleryComponent() {
             </Button>
           </form>
         </div>
-      </div>
+      </motion.div>
 
-      <Separator className="my-6" />
+      <motion.div variants={item}>
+        <Separator className="my-6" />
+      </motion.div>
 
+      <motion.div variants={item}>
       {loading ? (
         <div className="text-center py-20 text-muted-foreground">加载中...</div>
       ) : images.length === 0 ? (
@@ -224,7 +251,9 @@ function GalleryComponent() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {/* Image Grid Items */}
           {images.map((img) => (
-            <div
+            <motion.div
+              layoutId={`img-${img.id}`}
+              whileHover={{ scale: 1.02 }}
               key={img.id}
               className={`group relative aspect-square bg-muted/30 rounded-lg overflow-hidden border transition-all cursor-pointer ${
                 selectedIds.includes(img.id)
@@ -270,13 +299,14 @@ function GalleryComponent() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
+      </motion.div>
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t">
+      <motion.div variants={item} className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>每页显示</span>
           <Select
@@ -322,7 +352,7 @@ function GalleryComponent() {
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Detail Dialog */}
       <Dialog
@@ -516,6 +546,6 @@ function GalleryComponent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   )
 }

@@ -56,6 +56,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { formatBytes } from '@/lib/utils'
+import { motion } from 'motion/react'
 
 export const Route = createFileRoute('/_admin/admin/users')({
   component: AdminUsersComponent,
@@ -236,9 +237,32 @@ function AdminUsersComponent() {
     }
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <motion.div
+      className="space-y-6"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div
+        variants={item}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
         <div>
           <h2 className="text-3xl font-bold tracking-tight">用户管理</h2>
           <p className="text-muted-foreground">管理系统注册用户及权限</p>
@@ -279,9 +303,9 @@ function AdminUsersComponent() {
             </div>
           </form>
         </div>
-      </div>
+      </motion.div>
       <Separator className="my-6" />
-      <div className="rounded-md border bg-white">
+      <motion.div variants={item} className="rounded-md border bg-white">
         <Table>
           <TableHeader>
             <TableRow>
@@ -458,7 +482,7 @@ function AdminUsersComponent() {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Edit/Create Dialog */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -527,7 +551,7 @@ function AdminUsersComponent() {
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16 border">
                     {previewUrl ? (
-                      <AvatarImage src={previewUrl} className="object-cover" />
+                      <AvatarImage src={previewUrl || undefined} className="object-cover" />
                     ) : !removeAvatar && formData.avatar ? (
                       <AvatarImage
                         src={`${avatarPrefix}${currentId}/${formData.avatar}`}
@@ -652,6 +676,6 @@ function AdminUsersComponent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   )
 }

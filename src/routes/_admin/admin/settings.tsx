@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from '../../../components/ui/card'
 import { Separator } from '../../../components/ui/separator'
+import { motion } from 'motion/react'
 
 export const Route = createFileRoute('/_admin/admin/settings')({
   component: AdminSettingsComponent,
@@ -87,11 +88,21 @@ function AdminSettingsComponent() {
   }, [])
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
+    <motion.div
+      className="space-y-6 max-w-2xl"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+      >
         <h2 className="text-3xl font-bold tracking-tight">系统设置</h2>
         <p className="text-muted-foreground">配置网站全局参数</p>
-      </div>
+      </motion.div>
+
       <Separator className="my-6" />
       <Card>
         <CardHeader>
@@ -148,6 +159,6 @@ function AdminSettingsComponent() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   )
 }

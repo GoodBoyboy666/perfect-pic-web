@@ -42,6 +42,7 @@ import {
   AvatarImage,
 } from '../../../components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
+import { motion } from 'motion/react'
 
 export const Route = createFileRoute('/_admin/admin/images')({
   component: AdminImagesComponent,
@@ -187,9 +188,32 @@ function AdminImagesComponent() {
       .then(() => toast.success('已复制到剪贴板'))
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <motion.div
+      className="space-y-6"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div
+        variants={item}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
         <div>
           <h2 className="text-3xl font-bold tracking-tight">图片管理</h2>
           <p className="text-muted-foreground">管理全站所有上传的图片</p>
@@ -230,16 +254,17 @@ function AdminImagesComponent() {
             </Button>
           </form>
         </div>
-      </div>
+      </motion.div>
       <Separator className="my-6" />
       {images.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-lg">
+        <motion.div variants={item} className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-lg">
           <p className="text-muted-foreground text-lg">暂无图片数据</p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <motion.div variants={item} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {images.map((img) => (
-            <div
+            <motion.div
+              layoutId={`admin-img-${img.id}`}
               key={img.id}
               className={`group relative bg-card border rounded-lg overflow-hidden cursor-pointer transition-all ${
                 selectedIds.includes(img.id)
@@ -297,13 +322,13 @@ function AdminImagesComponent() {
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t">
+      <motion.div variants={item} className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>每页显示</span>
           <Select
@@ -353,7 +378,7 @@ function AdminImagesComponent() {
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Detail Dialog */}
       <Dialog
@@ -575,6 +600,6 @@ function AdminImagesComponent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   )
 }
