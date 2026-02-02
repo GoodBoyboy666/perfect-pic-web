@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion } from 'motion/react'
 import { fetchClient } from '../../../lib/api'
 import { Button } from '../../../components/ui/button'
 import { Checkbox } from '../../../components/ui/checkbox'
@@ -140,89 +141,116 @@ function UploadComponent() {
       .then(() => toast.success('已复制到剪贴板'))
   }
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold">批量上传图片</h2>
+    <motion.div
+      className="max-w-4xl mx-auto space-y-6"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.h2 variants={item} className="text-2xl font-bold">
+        批量上传图片
+      </motion.h2>
 
       {/* Upload Area */}
-      {uploadedResults.length === 0 && (
-        <div className="space-y-6">
-          <label className="block border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:bg-muted/50 transition cursor-pointer bg-muted/10">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            {previews.length > 0 ? (
-              <div className="grid grid-cols-3 gap-4">
-                {previews.map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    className="h-32 w-full object-cover rounded-md shadow-sm border"
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-muted-foreground flex flex-col items-center">
-                <span className="text-lg font-medium">点击选择多张图片</span>
-                <span className="text-sm">或将文件拖拽至此</span>
-              </div>
-            )}
-          </label>
-
-          {/* Format Conversion Controls */}
-          <Card>
-            <CardContent className="flex items-center gap-6">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="convert"
-                  checked={convert}
-                  onCheckedChange={(c: boolean | 'indeterminate') =>
-                    setConvert(!!c)
-                  }
-                />
-                <Label htmlFor="convert" className="cursor-pointer">
-                  开启格式转换
-                </Label>
-              </div>
-
-              {convert && (
-                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
-                  <Select value={targetFormat} onValueChange={setTargetFormat}>
-                    <SelectTrigger className="w-25">
-                      <SelectValue placeholder="Format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="webp">WebP</SelectItem>
-                      <SelectItem value="png">PNG</SelectItem>
-                      <SelectItem value="jpeg">JPEG</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-xs text-muted-foreground">
-                    (将在本地进行格式转换)
-                  </span>
+      <motion.div variants={item}>
+        {uploadedResults.length === 0 && (
+          <div className="space-y-6">
+            <label className="block border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:bg-muted/50 transition cursor-pointer bg-muted/10">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              {previews.length > 0 ? (
+                <div className="grid grid-cols-3 gap-4">
+                  {previews.map((src, i) => (
+                    <img
+                      key={i}
+                      src={src}
+                      className="h-32 w-full object-cover rounded-md shadow-sm border"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-muted-foreground flex flex-col items-center">
+                  <span className="text-lg font-medium">点击选择多张图片</span>
+                  <span className="text-sm">或将文件拖拽至此</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </label>
 
-          <Button
-            onClick={handleUpload}
-            disabled={files.length === 0 || uploading}
-            size="lg"
-            className="w-full text-lg"
-          >
-            {uploading ? `正在上传 ${files.length} 张图片...` : '开始上传'}
-          </Button>
-        </div>
-      )}
+            {/* Format Conversion Controls */}
+            <Card>
+              <CardContent className="flex items-center gap-6">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="convert"
+                    checked={convert}
+                    onCheckedChange={(c: boolean | 'indeterminate') =>
+                      setConvert(!!c)
+                    }
+                  />
+                  <Label htmlFor="convert" className="cursor-pointer">
+                    开启格式转换
+                  </Label>
+                </div>
+
+                {convert && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                    <Select
+                      value={targetFormat}
+                      onValueChange={setTargetFormat}
+                    >
+                      <SelectTrigger className="w-25">
+                        <SelectValue placeholder="Format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="webp">WebP</SelectItem>
+                        <SelectItem value="png">PNG</SelectItem>
+                        <SelectItem value="jpeg">JPEG</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-xs text-muted-foreground">
+                      (将在本地进行格式转换)
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Button
+              onClick={handleUpload}
+              disabled={files.length === 0 || uploading}
+              size="lg"
+              className="w-full text-lg"
+            >
+              {uploading ? `正在上传 ${files.length} 张图片...` : '开始上传'}
+            </Button>
+          </div>
+        )}
+      </motion.div>
 
       {/* Results Area */}
       {uploadedResults.length > 0 && (
-        <div className="space-y-8 animate-in slide-in-from-bottom-4">
+        <motion.div variants={item} className="space-y-8">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold text-green-600">
               上传完成 ({uploadedResults.length})
@@ -343,8 +371,8 @@ function UploadComponent() {
               </Card>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }
