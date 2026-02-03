@@ -22,6 +22,12 @@ import {
   CardTitle,
 } from '../../../components/ui/card'
 import { Separator } from '../../../components/ui/separator'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../../../components/ui/tabs'
 
 export const Route = createFileRoute('/_admin/admin/settings')({
   component: AdminSettingsComponent,
@@ -29,10 +35,10 @@ export const Route = createFileRoute('/_admin/admin/settings')({
 
 function AdminSettingsComponent() {
   const [settings, setSettings] = useState<
-    Array<{ Key: string; Value: string; Desc: string }>
+    Array<{ Key: string; Value: string; Desc: string; Category?: string }>
   >([])
   const [originalSettings, setOriginalSettings] = useState<
-    Array<{ Key: string; Value: string; Desc: string }>
+    Array<{ Key: string; Value: string; Desc: string; Category?: string }>
   >([])
 
   const loadSettings = async () => {
@@ -89,7 +95,7 @@ function AdminSettingsComponent() {
 
   return (
     <motion.div
-      className="space-y-6 max-w-2xl"
+      className="space-y-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
@@ -104,61 +110,113 @@ function AdminSettingsComponent() {
       </motion.div>
 
       <Separator className="my-6" />
-      <Card>
-        <CardHeader>
-          <CardTitle>通用设置</CardTitle>
-          <CardDescription>修改后请点击保存</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpdate} className="space-y-6">
-            {settings.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">
-                暂无可用设置
-              </div>
-            )}
 
-            {settings.map((setting, index) => (
-              <div key={setting.Key} className="grid gap-2">
-                <Label className="text-base font-semibold">
-                  {setting.Desc || setting.Key}
-                </Label>
+      {settings.length === 0 ? (
+        <Card>
+          <CardContent className="py-6 text-center text-muted-foreground">
+            暂无可用设置
+          </CardContent>
+        </Card>
+      ) : (
+        <form
+          onSubmit={handleUpdate}
+          className="space-y-6 max-w-4xl mx-auto w-full"
+        >
+          <Tabs
+            defaultValue={settings[0]?.Category || '通用设置'}
+            className="w-full"
+          >
+            <TabsList className="w-full justify-start h-auto flex-wrap gap-2">
+              {Array.from(
+                new Set(settings.map((s) => s.Category || '通用设置')),
+              ).map((category) => (
+                <TabsTrigger key={category} value={category}>
+                  {category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {Object.entries(
+              settings.reduce(
+                (acc, setting) => {
+                  const category = setting.Category || '通用设置'
+                  const list = acc[category]
+                  if (!list) {
+                    acc[category] = [setting]
+                  } else {
+                    list.push(setting)
+                  }
+                  return acc
+                },
+                {} as Record<string, typeof settings | undefined>,
+              ),
+            ).map(([category, items]) => {
+              if (!items) return null
+              return (
+                <TabsContent key={category} value={category}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{category}</CardTitle>
+                      <CardDescription>
+                        {category === '通用设置' ? '修改后请点击保存' : ''}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {items.map((setting, index) => (
+                        <div key={setting.Key} className="grid gap-2">
+                          <Label className="text-base font-semibold">
+                            {setting.Desc || setting.Key}
+                          </Label>
 
-                {/* Simple heuristic for boolean-like values */}
-                {setting.Value === 'true' || setting.Value === 'false' ? (
-                  <Select
-                    value={setting.Value}
-                    onValueChange={(val) => handleChange(setting.Key, val)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">开启 (True)</SelectItem>
-                      <SelectItem value="false">关闭 (False)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={setting.Value}
-                    onChange={(e) => handleChange(setting.Key, e.target.value)}
-                  />
-                )}
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  Key: {setting.Key}
-                </p>
-                {index < settings.length - 1 && <Separator className="my-2" />}
-              </div>
-            ))}
+                          {/* Simple heuristic for boolean-like values */}
+                          {setting.Value === 'true' ||
+                          setting.Value === 'false' ? (
+                            <Select
+                              value={setting.Value}
+                              onValueChange={(val) =>
+                                handleChange(setting.Key, val)
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="true">
+                                  开启 (True)
+                                </SelectItem>
+                                <SelectItem value="false">
+                                  关闭 (False)
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              value={setting.Value}
+                              onChange={(e) =>
+                                handleChange(setting.Key, e.target.value)
+                              }
+                            />
+                          )}
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            Key: {setting.Key}
+                          </p>
+                          {index < items.length - 1 && (
+                            <Separator className="my-2" />
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )
+            })}
+          </Tabs>
 
-            {settings.length > 0 && (
-              <Button type="submit" className="w-full sm:w-auto">
-                <Save className="mr-2 h-4 w-4" />
-                保存更改
-              </Button>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+          <Button type="submit" className="w-full sm:w-auto">
+            <Save className="mr-2 h-4 w-4" />
+            保存更改
+          </Button>
+        </form>
+      )}
     </motion.div>
   )
 }
