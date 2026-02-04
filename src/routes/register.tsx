@@ -21,6 +21,7 @@ export const Route = createFileRoute('/register')({
 function RegisterComponent() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [captchaId, setCaptchaId] = useState('')
@@ -57,6 +58,7 @@ function RegisterComponent() {
         // but explicit headers are also fine
         body: {
           username,
+          email,
           password,
           captcha_id: captchaId,
           captcha_answer: captchaAnswer,
@@ -102,6 +104,17 @@ function RegisterComponent() {
                   placeholder="选择用户名"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">邮箱</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="输入邮箱地址"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>

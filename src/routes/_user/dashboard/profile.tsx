@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { Lock, Upload, User } from 'lucide-react'
+import { Lock, Mail, Upload, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
 import { fetchClient } from '../../../lib/api'
@@ -29,10 +29,19 @@ export const Route = createFileRoute('/_user/dashboard/profile')({
 function ProfileComponent() {
   const { user, refreshUser } = useAuth()
   const [username, setUsername] = useState(user?.username || '')
+  const [email, setEmail] = useState(user?.email || '')
+  const [emailPassword, setEmailPassword] = useState('')
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [avatarPrefix, setAvatarPrefix] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username || '')
+      setEmail(user.email || '')
+    }
+  }, [user])
 
   useEffect(() => {
     fetchClient('/api/avatar_prefix')
@@ -73,6 +82,23 @@ function ProfileComponent() {
       })
       await refreshUser()
       toast.success('用户名修改成功')
+    } catch (e: any) {
+      toast.error(e.message || '修改失败')
+    }
+  }
+
+  const handleUpdateEmail = async () => {
+    try {
+      const res: any = await fetchClient('/api/user/email', {
+        method: 'POST',
+        body: {
+          new_email: email,
+          password: emailPassword,
+        },
+      })
+      await refreshUser()
+      setEmailPassword('')
+      toast.success(res.message || '邮箱修改成功')
     } catch (e: any) {
       toast.error(e.message || '修改失败')
     }
@@ -189,6 +215,51 @@ function ProfileComponent() {
                 <Button onClick={handleUpdateUsername}>更新</Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Email Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>邮箱设置</CardTitle>
+            <CardDescription>绑定或修改您的邮箱地址</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">邮箱地址</Label>
+              <div className="relative">
+                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-9"
+                  placeholder="name@example.com"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-password">确认密码</Label>
+              <div className="relative">
+                <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email-password"
+                  type="password"
+                  placeholder="输入当前密码以确认修改"
+                  value={emailPassword}
+                  onChange={(e) => setEmailPassword(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <Button onClick={handleUpdateEmail}>更新邮箱</Button>
           </CardContent>
         </Card>
       </motion.div>

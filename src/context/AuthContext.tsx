@@ -9,6 +9,8 @@ export interface User {
   storage_quota: number
   storage_used: number
   status: number
+  email: string
+  email_verified: boolean
 }
 
 export interface AuthContextType {

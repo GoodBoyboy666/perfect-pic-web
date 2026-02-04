@@ -12,9 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InitRouteImport } from './routes/init'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as UserRouteImport } from './routes/_user'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
+import { Route as AuthEmailVerifyRouteImport } from './routes/auth/email-verify'
+import { Route as AuthEmailChangeVerifyRouteImport } from './routes/auth/email-change-verify'
 import { Route as UserDashboardUploadRouteImport } from './routes/_user/dashboard/upload'
 import { Route as UserDashboardProfileRouteImport } from './routes/_user/dashboard/profile'
 import { Route as UserDashboardOverviewRouteImport } from './routes/_user/dashboard/overview'
@@ -39,6 +43,11 @@ const InitRoute = InitRouteImport.update({
   path: '/init',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UserRoute = UserRouteImport.update({
   id: '/_user',
   getParentRoute: () => rootRouteImport,
@@ -50,6 +59,21 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthEmailVerifyRoute = AuthEmailVerifyRouteImport.update({
+  id: '/auth/email-verify',
+  path: '/auth/email-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthEmailChangeVerifyRoute = AuthEmailChangeVerifyRouteImport.update({
+  id: '/auth/email-change-verify',
+  path: '/auth/email-change-verify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UserDashboardUploadRoute = UserDashboardUploadRouteImport.update({
@@ -95,9 +119,13 @@ const AdminAdminImagesRoute = AdminAdminImagesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/email-change-verify': typeof AuthEmailChangeVerifyRoute
+  '/auth/email-verify': typeof AuthEmailVerifyRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/admin/images': typeof AdminAdminImagesRoute
   '/admin/overview': typeof AdminAdminOverviewRoute
   '/admin/settings': typeof AdminAdminSettingsRoute
@@ -109,9 +137,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/email-change-verify': typeof AuthEmailChangeVerifyRoute
+  '/auth/email-verify': typeof AuthEmailVerifyRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/admin/images': typeof AdminAdminImagesRoute
   '/admin/overview': typeof AdminAdminOverviewRoute
   '/admin/settings': typeof AdminAdminSettingsRoute
@@ -126,9 +158,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_admin': typeof AdminRouteWithChildren
   '/_user': typeof UserRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/auth/email-change-verify': typeof AuthEmailChangeVerifyRoute
+  '/auth/email-verify': typeof AuthEmailVerifyRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_admin/admin/images': typeof AdminAdminImagesRoute
   '/_admin/admin/overview': typeof AdminAdminOverviewRoute
   '/_admin/admin/settings': typeof AdminAdminSettingsRoute
@@ -142,9 +178,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/forgot-password'
     | '/init'
     | '/login'
     | '/register'
+    | '/auth/email-change-verify'
+    | '/auth/email-verify'
+    | '/auth/reset-password'
     | '/admin/images'
     | '/admin/overview'
     | '/admin/settings'
@@ -156,9 +196,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
     | '/init'
     | '/login'
     | '/register'
+    | '/auth/email-change-verify'
+    | '/auth/email-verify'
+    | '/auth/reset-password'
     | '/admin/images'
     | '/admin/overview'
     | '/admin/settings'
@@ -172,9 +216,13 @@ export interface FileRouteTypes {
     | '/'
     | '/_admin'
     | '/_user'
+    | '/forgot-password'
     | '/init'
     | '/login'
     | '/register'
+    | '/auth/email-change-verify'
+    | '/auth/email-verify'
+    | '/auth/reset-password'
     | '/_admin/admin/images'
     | '/_admin/admin/overview'
     | '/_admin/admin/settings'
@@ -189,9 +237,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   UserRoute: typeof UserRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InitRoute: typeof InitRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  AuthEmailChangeVerifyRoute: typeof AuthEmailChangeVerifyRoute
+  AuthEmailVerifyRoute: typeof AuthEmailVerifyRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -217,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_user': {
       id: '/_user'
       path: ''
@@ -236,6 +295,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/email-verify': {
+      id: '/auth/email-verify'
+      path: '/auth/email-verify'
+      fullPath: '/auth/email-verify'
+      preLoaderRoute: typeof AuthEmailVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/email-change-verify': {
+      id: '/auth/email-change-verify'
+      path: '/auth/email-change-verify'
+      fullPath: '/auth/email-change-verify'
+      preLoaderRoute: typeof AuthEmailChangeVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_user/dashboard/upload': {
@@ -333,9 +413,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   UserRoute: UserRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InitRoute: InitRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  AuthEmailChangeVerifyRoute: AuthEmailChangeVerifyRoute,
+  AuthEmailVerifyRoute: AuthEmailVerifyRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
