@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import {
   Activity,
   Cpu,
+  GitCommit,
   HardDrive,
   Image as ImageIcon,
   Server,
@@ -11,7 +12,6 @@ import {
   Zap,
 } from 'lucide-react'
 import { motion } from 'motion/react'
-import { version } from '../../../../package.json'
 import { fetchClient } from '../../../lib/api'
 import {
   Card,
@@ -39,6 +39,9 @@ function formatBytes(bytes: number, decimals = 2) {
 }
 
 function AdminOverview() {
+  const appVersion = import.meta.env.VITE_APP_VERSION || 'Dev'
+  const uiCommit = import.meta.env.VITE_UI_HASH || 'local'
+
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -154,9 +157,16 @@ function AdminOverview() {
               <div className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm font-medium">前端版本</span>
+                  <span className="text-sm font-medium">后端版本</span>
                 </div>
-                <span className="text-sm font-mono">v{version}</span>
+                <span className="text-sm font-mono">{appVersion}</span>
+              </div>
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <GitCommit className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm font-medium">UI 构建</span>
+                </div>
+                <span className="text-sm font-mono">{uiCommit}</span>
               </div>
               <div className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-2">
