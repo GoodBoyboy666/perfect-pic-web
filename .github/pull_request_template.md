@@ -17,6 +17,8 @@
 - [ ] ♻️ 代码重构 (Refactoring)
 - [ ] ⚡ 性能优化 (Performance improvement)
 - [ ] 🔧 构建/工具链更新 (Build/Tooling update)
+- [ ] 👷 CI/CD (CI/CD)
+- [ ] 🔖 版本号修订 (Version bump)
 - [ ] 📦 其他 (Other)
 
 ## ✅ 检查清单
