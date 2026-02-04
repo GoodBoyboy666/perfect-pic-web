@@ -69,6 +69,12 @@ function OverviewComponent() {
                 </span>
               </p>
               <p>
+                邮箱:{' '}
+                <span className="text-foreground font-medium">
+                  {user?.email || '未绑定'}
+                </span>
+              </p>
+              <p>
                 ID:{' '}
                 <span className="text-foreground font-medium">{user?.id}</span>
               </p>
