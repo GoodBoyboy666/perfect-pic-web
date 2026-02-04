@@ -82,39 +82,39 @@ pnpm build
 - **Lint 检查**:
 
   ```bash
-  pnpm lint
+  pnpm check
   ```
 
 - **代码格式化**:
 
   ```bash
-  pnpm format
-  ```
-
-- **一键检查与修复**:
-
-  ```bash
-  pnpm check
+  pnpm fix
   ```
 
 ## 📂 目录结构
 
 ```text
 src/
-├── components/     # 公共组件
-│   └── ui/         # 基础 UI 组件 (Buttons, Inputs, Dialogs 等)
-├── context/        # 全局状态管理 (AuthContext, SiteContext)
-├── hooks/          # 自定义 React Hooks
-├── lib/            # 工具函数与 API 配置
-├── routes/         # 页面路由 (基于文件系统的路由结构)
-│   ├── _admin/     # 管理后台相关路由 (需权限)
-│   ├── _user/      # 用户中心相关路由 (需登录)
-│   ├── index.tsx   # 首页
-│   ├── login.tsx   # 登录页
-│   └── register.tsx # 注册页
-├── main.tsx        # 应用入口
-├── styles.css      # 全局样式
-└── routeTree.gen.ts # TanStack Router 自动生成的路由树
+├── components/       # 公共组件
+│   └── ui/           # 基础 UI 组件 (Buttons, Inputs, Dialogs 等)
+├── context/          # 全局状态管理 (AuthContext, SiteContext)
+├── hooks/            # 自定义 React Hooks
+├── lib/              # 工具函数与 API 配置
+├── routes/           # 页面路由 (基于文件系统的路由结构)
+│   ├── _admin/       # 管理后台路由组
+│   │   └── admin/    # 管理后台页面 (Overview, Images, Users, Settings)
+│   ├── _user/        # 用户中心路由组
+│   │   └── dashboard/# 用户中心页面 (Overview, Gallery, Upload, Profile)
+│   ├── __root.tsx    # 根路由布局
+│   ├── _admin.tsx    # 管理后台布局 (CheckAuth, Sidebar)
+│   ├── _user.tsx     # 用户中心布局 (CheckAuth, Sidebar)
+│   ├── index.tsx     # 首页
+│   ├── init.tsx      # 系统初始化/安装页面
+│   ├── login.tsx     # 登录页
+│   └── register.tsx  # 注册页
+├── main.tsx          # 应用入口
+├── styles.css        # 全局样式
+└── routeTree.gen.ts  # TanStack Router 自动生成的路由树
 ```
 
 ## 🔗 相关项目
