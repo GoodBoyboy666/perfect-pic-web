@@ -78,6 +78,8 @@ function AdminUsersComponent() {
   const [currentId, setCurrentId] = useState<number | null>(null)
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
+    email_verified: false,
     password: '',
     avatar: '',
     status: 1,
@@ -132,7 +134,14 @@ function AdminUsersComponent() {
   // Action Handlers
   const handleCreateOpen = () => {
     setModalMode('create')
-    setFormData({ username: '', password: '', avatar: '', status: 1 })
+    setFormData({
+      username: '',
+      email: '',
+      email_verified: false,
+      password: '',
+      avatar: '',
+      status: 1,
+    })
     setSelectedFile(null)
     setRemoveAvatar(false)
     setPreviewUrl(null)
@@ -144,6 +153,8 @@ function AdminUsersComponent() {
     setCurrentId(user.id)
     setFormData({
       username: user.username,
+      email: user.email || '',
+      email_verified: user.email_verified || false,
       password: '',
       avatar: user.avatar || '',
       status: user.status || 1,
@@ -183,6 +194,10 @@ function AdminUsersComponent() {
         const payload: any = {}
         if (formData.username !== originalData.username)
           payload.username = formData.username
+        if (formData.email !== originalData.email)
+          payload.email = formData.email
+        if (formData.email_verified !== originalData.email_verified)
+          payload.email_verified = formData.email_verified
         if (formData.password) payload.password = formData.password
         if (formData.status !== originalData.status)
           payload.status = formData.status
@@ -311,6 +326,7 @@ function AdminUsersComponent() {
             <TableRow>
               <TableHead className="w-20">ID</TableHead>
               <TableHead>用户</TableHead>
+              <TableHead>邮箱</TableHead>
               <TableHead>状态</TableHead>
               <TableHead>存储使用</TableHead>
               <TableHead>角色</TableHead>
@@ -346,6 +362,23 @@ function AdminUsersComponent() {
                         )}
                       </span>
                     </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-sm">{u.email || '-'}</span>
+                    {u.email && (
+                      <Badge
+                        variant={u.email_verified ? 'default' : 'secondary'}
+                        className={`w-fit text-[10px] px-1 py-0 h-4 mt-1 ${
+                          u.email_verified
+                            ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
+                        }`}
+                      >
+                        {u.email_verified ? '已验证' : '未验证'}
+                      </Badge>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -508,6 +541,27 @@ function AdminUsersComponent() {
                 }
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">邮箱</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="email_verified"
+                checked={formData.email_verified}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, email_verified: !!checked })
+                }
+              />
+              <Label htmlFor="email_verified">邮箱已验证</Label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">

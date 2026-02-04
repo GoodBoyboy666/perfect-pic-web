@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Save } from 'lucide-react'
+import { Save, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
 import { fetchClient } from '../../../lib/api'
@@ -40,6 +40,8 @@ function AdminSettingsComponent() {
   const [originalSettings, setOriginalSettings] = useState<
     Array<{ Key: string; Value: string; Desc: string; Category?: string }>
   >([])
+  const [testEmail, setTestEmail] = useState('')
+  const [sendingTest, setSendingTest] = useState(false)
 
   const loadSettings = async () => {
     try {
@@ -89,6 +91,26 @@ function AdminSettingsComponent() {
     )
   }
 
+  const handleTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!testEmail) {
+      toast.error('请输入接收测试邮件的邮箱地址')
+      return
+    }
+    setSendingTest(true)
+    try {
+      const res: any = await fetchClient('/api/admin/email/test', {
+        method: 'POST',
+        body: { to_email: testEmail },
+      })
+      toast.success(res.message || '测试邮件已发送')
+    } catch (error: any) {
+      toast.error(error.message || '发送失败')
+    } finally {
+      setSendingTest(false)
+    }
+  }
+
   useEffect(() => {
     loadSettings()
   }, [])
@@ -134,6 +156,7 @@ function AdminSettingsComponent() {
                   {category}
                 </TabsTrigger>
               ))}
+              <TabsTrigger value="email_test">邮件测试</TabsTrigger>
             </TabsList>
             {Object.entries(
               settings.reduce(
@@ -209,6 +232,44 @@ function AdminSettingsComponent() {
                 </TabsContent>
               )
             })}
+            <TabsContent value="email_test">
+              <Card>
+                <CardHeader>
+                  <CardTitle>邮件发送测试</CardTitle>
+                  <CardDescription>
+                    发送一封测试邮件以验证 SMTP 配置是否正确
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4 max-w-md items-end">
+                    <div className="grid w-full gap-2">
+                      <Label htmlFor="test-email">收信人邮箱</Label>
+                      <Input
+                        id="test-email"
+                        placeholder="recipient@example.com"
+                        value={testEmail}
+                        onChange={(e) => setTestEmail(e.target.value)}
+                        type="email"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleTestEmail}
+                      disabled={sendingTest}
+                    >
+                      {sendingTest ? (
+                        '发送中...'
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          发送
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
 
           <Button type="submit" className="w-full sm:w-auto">
