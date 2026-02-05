@@ -6,7 +6,7 @@ export interface User {
   username: string
   admin: boolean
   avatar?: string
-  storage_quota: number
+  storage_quota: number | null
   storage_used: number
   status: number
   email: string

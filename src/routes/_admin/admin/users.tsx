@@ -83,6 +83,8 @@ function AdminUsersComponent() {
     password: '',
     avatar: '',
     status: 1,
+    storage_quota: 0,
+    use_system_quota: true,
   })
   const [originalData, setOriginalData] = useState<any>(null)
 
@@ -95,10 +97,14 @@ function AdminUsersComponent() {
   const [deleteTarget, setDeleteTarget] = useState<any>(null)
   const [hardDelete, setHardDelete] = useState(false)
   const [avatarPrefix, setAvatarPrefix] = useState('')
+  const [systemQuota, setSystemQuota] = useState(0)
 
   useEffect(() => {
     fetchClient('/api/avatar_prefix')
       .then((res: any) => setAvatarPrefix(res.avatar_prefix))
+      .catch(() => {})
+    fetchClient('/api/default_storage_quota')
+      .then((res: any) => setSystemQuota(res.default_storage_quota || 0))
       .catch(() => {})
   }, [])
 
@@ -141,6 +147,8 @@ function AdminUsersComponent() {
       password: '',
       avatar: '',
       status: 1,
+      storage_quota: 0,
+      use_system_quota: true,
     })
     setSelectedFile(null)
     setRemoveAvatar(false)
@@ -158,6 +166,8 @@ function AdminUsersComponent() {
       password: '',
       avatar: user.avatar || '',
       status: user.status || 1,
+      storage_quota: user.storage_quota || 0,
+      use_system_quota: user.storage_quota === null,
     })
     setSelectedFile(null)
     setRemoveAvatar(false)
@@ -184,9 +194,15 @@ function AdminUsersComponent() {
     e.preventDefault()
     try {
       if (modalMode === 'create') {
+        const payload: any = { ...formData }
+        if (formData.use_system_quota) {
+          payload.storage_quota = null
+        }
+        delete payload.use_system_quota
+
         await fetchClient('/api/admin/users', {
           method: 'POST',
-          body: formData,
+          body: payload,
         })
         toast.success('用户创建成功')
       } else {
@@ -201,6 +217,30 @@ function AdminUsersComponent() {
         if (formData.password) payload.password = formData.password
         if (formData.status !== originalData.status)
           payload.status = formData.status
+
+        // Handle storage_quota update logic
+        const originalQuota = originalData.storage_quota
+        const newQuota = formData.use_system_quota ? -1 : formData.storage_quota
+
+        // Check if we need to update quota
+        // Only update if:
+        // 1. Quota changed from custom to system (system is -1 in payload)
+        // 2. Quota changed from system (null) to custom
+        // 3. Custom quota value changed
+
+        let shouldUpdateQuota = false
+        if (formData.use_system_quota) {
+          // If we want system quota, and current is not system (null), we need update (-1)
+          if (originalQuota !== null) shouldUpdateQuota = true
+        } else {
+          // If we want custom quota, check if it's diff from original
+          if (newQuota !== originalQuota) shouldUpdateQuota = true
+        }
+
+        if (shouldUpdateQuota) {
+          payload.storage_quota = newQuota
+        }
+
         // Note: We don't update 'avatar' string via PATCH anymore, we use the specific endpoints below
 
         if (Object.keys(payload).length > 0) {
@@ -407,7 +447,13 @@ function AdminUsersComponent() {
                     </span>
                     <span className="text-muted-foreground mx-1">/</span>
                     <span className="text-muted-foreground">
-                      {formatBytes(u.storage_quota || 0)}
+                      {u.storage_quota === null ? (
+                        <span title="系统默认配额">
+                          {formatBytes(systemQuota)} (默认)
+                        </span>
+                      ) : (
+                        formatBytes(u.storage_quota)
+                      )}
                     </span>
                   </div>
                 </TableCell>
@@ -598,6 +644,50 @@ function AdminUsersComponent() {
                   <SelectItem value="2">封禁</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2 border p-3 rounded-md">
+              <div className="flex items-center justify-between mb-2">
+                <Label>存储配额</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="use_system_quota"
+                    checked={formData.use_system_quota}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, use_system_quota: !!checked })
+                    }
+                  />
+                  <Label
+                    htmlFor="use_system_quota"
+                    className="font-normal text-xs cursor-pointer"
+                  >
+                    使用系统默认
+                  </Label>
+                </div>
+              </div>
+
+              {formData.use_system_quota ? (
+                <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                  当前系统默认: {formatBytes(systemQuota)}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    id="storage_quota"
+                    type="number"
+                    value={formData.storage_quota}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        storage_quota: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    placeholder="输入配额 (Bytes)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    自定义配额: {formatBytes(formData.storage_quota || 0)}
+                  </p>
+                </div>
+              )}
             </div>
             {modalMode === 'edit' && (
               <div className="space-y-3">

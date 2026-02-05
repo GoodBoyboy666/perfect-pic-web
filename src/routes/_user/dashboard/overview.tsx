@@ -19,12 +19,17 @@ export const Route = createFileRoute('/_user/dashboard/overview')({
 function OverviewComponent() {
   const { user } = useAuth()
   const [count, setCount] = useState(0)
+  const [systemQuota, setSystemQuota] = useState(0)
 
   useEffect(() => {
     fetchClient('/api/user/images/count')
       .then((res: any) => {
         setCount(res.image_count || 0)
       })
+      .catch(() => {})
+
+    fetchClient('/api/default_storage_quota')
+      .then((res: any) => setSystemQuota(res.default_storage_quota || 0))
       .catch(() => {})
   }, [])
 
@@ -113,15 +118,22 @@ function OverviewComponent() {
                 <span className="text-sm font-normal text-muted-foreground mx-1">
                   /
                 </span>
-                {user?.storage_quota !== undefined
-                  ? formatBytes(user.storage_quota)
-                  : '0 B'}
+                {user?.storage_quota === null
+                  ? formatBytes(systemQuota)
+                  : user?.storage_quota !== undefined
+                    ? formatBytes(user.storage_quota)
+                    : '0 B'}
               </div>
               <p className="text-xs text-muted-foreground">
                 已使用{' '}
-                {user?.storage_quota
-                  ? ((user.storage_used / user.storage_quota) * 100).toFixed(1)
-                  : 0}
+                {(() => {
+                  const quota =
+                    user?.storage_quota === null
+                      ? systemQuota
+                      : user?.storage_quota
+                  if (!quota) return '0'
+                  return (((user?.storage_used || 0) / quota) * 100).toFixed(1)
+                })()}
                 %
               </p>
             </CardContent>
