@@ -28,17 +28,89 @@ import {
   TabsList,
   TabsTrigger,
 } from '../../../components/ui/tabs'
+import { CaptchaField } from '../../../components/CaptchaField'
+import { useCaptcha } from '../../../hooks/use-captcha'
 
 export const Route = createFileRoute('/_admin/admin/settings')({
   component: AdminSettingsComponent,
 })
 
+function CaptchaTestPanel() {
+  const captcha = useCaptcha()
+  const hasToken = !!captcha.captchaToken
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>验证码测试</CardTitle>
+        <CardDescription>
+          用于验证当前系统配置的验证码是否能在前端正常加载显示。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="text-sm text-muted-foreground">
+          Provider:{' '}
+          <span className="font-mono">{captcha.provider || '(关闭)'}</span>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          状态:{' '}
+          {captcha.enabled ? (
+            <span className="font-mono">
+              enabled, {captcha.supported ? 'supported' : 'unsupported'}
+              {captcha.siteKey ? `, siteKey ok` : ''}
+              {hasToken ? `, token ok` : ''}
+            </span>
+          ) : (
+            <span className="font-mono">disabled</span>
+          )}
+        </div>
+
+        <CaptchaField captcha={captcha} required={false} />
+
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={captcha.refresh}
+            disabled={!captcha.enabled}
+          >
+            刷新验证码
+          </Button>
+        </div>
+
+        {captcha.provider !== 'image' && captcha.enabled && (
+          <div className="grid gap-2">
+            <Label>captcha token（前端采集结果）</Label>
+            <Input
+              value={captcha.captchaToken}
+              readOnly
+              placeholder="完成验证码后这里会自动出现 token"
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function AdminSettingsComponent() {
   const [settings, setSettings] = useState<
-    Array<{ Key: string; Value: string; Desc: string; Category?: string }>
+    Array<{
+      Key: string
+      Value: string
+      Desc: string
+      Category?: string
+      Sensitive?: boolean
+    }>
   >([])
   const [originalSettings, setOriginalSettings] = useState<
-    Array<{ Key: string; Value: string; Desc: string; Category?: string }>
+    Array<{
+      Key: string
+      Value: string
+      Desc: string
+      Category?: string
+      Sensitive?: boolean
+    }>
   >([])
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
@@ -157,6 +229,7 @@ function AdminSettingsComponent() {
                 </TabsTrigger>
               ))}
               <TabsTrigger value="email_test">邮件测试</TabsTrigger>
+              <TabsTrigger value="captcha_test">验证码测试</TabsTrigger>
             </TabsList>
             {Object.entries(
               settings.reduce(
@@ -186,8 +259,13 @@ function AdminSettingsComponent() {
                     <CardContent className="space-y-6">
                       {items.map((setting, index) => (
                         <div key={setting.Key} className="grid gap-2">
-                          <Label className="text-base font-semibold">
+                          <Label className="text-base font-semibold select-text">
                             {setting.Desc || setting.Key}
+                            {setting.Sensitive ? (
+                              <span className="text-xs text-muted-foreground font-normal">
+                                （敏感信息不会返回至前端）
+                              </span>
+                            ) : null}
                           </Label>
 
                           {/* Simple heuristic for boolean-like values */}
@@ -269,6 +347,9 @@ function AdminSettingsComponent() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="captcha_test">
+              <CaptchaTestPanel />
             </TabsContent>
           </Tabs>
 
