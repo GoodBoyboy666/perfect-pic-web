@@ -1,10 +1,12 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'motion/react'
 import { fetchClient } from '../lib/api'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
+import { CaptchaField } from '../components/CaptchaField'
+import { useCaptcha } from '../hooks/use-captcha'
 import {
   Card,
   CardContent,
@@ -24,24 +26,8 @@ function RegisterComponent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [captchaId, setCaptchaId] = useState('')
-  const [captchaImage, setCaptchaImage] = useState('')
-  const [captchaAnswer, setCaptchaAnswer] = useState('')
   const [error, setError] = useState('')
-
-  const fetchCaptcha = async () => {
-    try {
-      const res: any = await fetchClient('/api/captcha')
-      setCaptchaId(res.captcha_id)
-      setCaptchaImage(res.captcha_image)
-    } catch (e) {
-      console.error('Failed to fetch captcha')
-    }
-  }
-
-  useEffect(() => {
-    fetchCaptcha()
-  }, [])
+  const captcha = useCaptcha()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,15 +46,13 @@ function RegisterComponent() {
           username,
           email,
           password,
-          captcha_id: captchaId,
-          captcha_answer: captchaAnswer,
+          ...captcha.getSubmitPayload(),
         },
       })
       navigate({ to: '/login' })
     } catch (err: any) {
       setError(err.message || '注册失败')
-      fetchCaptcha() // Refresh captcha
-      setCaptchaAnswer('')
+      captcha.refresh() // Refresh captcha
     }
   }
 
@@ -140,30 +124,7 @@ function RegisterComponent() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="captcha">验证码</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="captcha"
-                    type="text"
-                    placeholder="输入验证码"
-                    value={captchaAnswer}
-                    onChange={(e) => setCaptchaAnswer(e.target.value)}
-                    required
-                  />
-                  {captchaImage ? (
-                    <img
-                      src={captchaImage}
-                      alt="Captcha"
-                      className="h-9 w-24 rounded border cursor-pointer object-cover bg-white"
-                      onClick={fetchCaptcha}
-                      title="点击刷新"
-                    />
-                  ) : (
-                    <div className="h-9 w-24 bg-muted rounded animate-pulse" />
-                  )}
-                </div>
-              </div>
+              <CaptchaField captcha={captcha} />
               <Button type="submit" className="w-full">
                 注册
               </Button>
