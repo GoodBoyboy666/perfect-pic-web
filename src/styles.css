@@ -137,6 +137,30 @@ code {
 }
 
 @layer components {
+  .animated-gradient {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .animated-gradient::before {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    background: linear-gradient(
+      120deg,
+      oklch(0.6 0.2 255) 0%,
+      oklch(0.62 0.19 285) 35%,
+      oklch(0.72 0.2 210) 70%,
+      oklch(0.66 0.22 330) 100%
+    );
+    background-size: 160% 160%;
+    animation: gradient-hue 36s linear infinite;
+    pointer-events: none;
+    z-index: -1;
+    transform: translateZ(0);
+  }
+
   [data-slot='button'] {
     @apply relative overflow-hidden;
     isolation: isolate;
@@ -153,6 +177,15 @@ code {
   }
 }
 
+@keyframes gradient-hue {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
 @keyframes button-ripple {
   to {
     transform: scale(1);
@@ -161,6 +194,12 @@ code {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .animated-gradient {
+    animation: none;
+  }
+  .animated-gradient::before {
+    animation: none;
+  }
   .button-ripple {
     animation: none;
     opacity: 0;
