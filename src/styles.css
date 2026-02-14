@@ -135,3 +135,34 @@ code {
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  [data-slot='button'] {
+    @apply relative overflow-hidden;
+    isolation: isolate;
+  }
+
+  .button-ripple {
+    position: absolute;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.25;
+    transform: scale(0);
+    animation: button-ripple 420ms ease-out;
+    pointer-events: none;
+  }
+}
+
+@keyframes button-ripple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-ripple {
+    animation: none;
+    opacity: 0;
+  }
+}
