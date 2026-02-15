@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { fetchClient } from '../lib/api'
 
 export interface User {
@@ -92,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const res = await fetchClient('/api/user/profile')
       const parsedUser = parseUser(res)
@@ -102,36 +109,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const login = async (formData: any) => {
-    const res: any = await fetchClient('/api/login', {
-      method: 'POST',
-      body: formData,
-    })
-    if (res && res.token) {
-      localStorage.setItem('token', res.token)
-    }
-    await refreshUser()
-  }
+  const login = useCallback(
+    async (formData: any) => {
+      const res: any = await fetchClient('/api/login', {
+        method: 'POST',
+        body: formData,
+      })
+      if (res && res.token) {
+        localStorage.setItem('token', res.token)
+      }
+      await refreshUser()
+    },
+    [refreshUser],
+  )
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token')
     setUser(null)
     window.location.href = '/login'
-  }
+  }, [])
 
   useEffect(() => {
     refreshUser()
-  }, [])
+  }, [refreshUser])
 
-  return (
-    <AuthContext.Provider
-      value={{ user, isLoading, login, logout, refreshUser }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, isLoading, login, logout, refreshUser }),
+    [user, isLoading, login, logout, refreshUser],
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
