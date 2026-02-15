@@ -17,11 +17,14 @@ export const Route = createFileRoute('/_user/dashboard/overview')({
 })
 
 function OverviewComponent() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [count, setCount] = useState(0)
   const [systemQuota, setSystemQuota] = useState(0)
 
   useEffect(() => {
+    // Ensure storage usage is fresh when entering Overview.
+    void refreshUser()
+
     fetchClient('/api/user/images/count')
       .then((res: any) => {
         setCount(res.image_count || 0)
@@ -31,7 +34,7 @@ function OverviewComponent() {
     fetchClient('/api/default_storage_quota')
       .then((res: any) => setSystemQuota(res.default_storage_quota || 0))
       .catch(() => {})
-  }, [])
+  }, [refreshUser])
 
   const container = {
     hidden: { opacity: 0 },

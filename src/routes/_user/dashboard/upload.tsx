@@ -4,6 +4,7 @@ import { Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
 import { fetchClient } from '../../../lib/api'
+import { useAuth } from '../../../context/AuthContext'
 import { Button } from '../../../components/ui/button'
 import { Checkbox } from '../../../components/ui/checkbox'
 import { Separator } from '../../../components/ui/separator'
@@ -104,6 +105,7 @@ export const Route = createFileRoute('/_user/dashboard/upload')({
 })
 
 function UploadComponent() {
+  const { refreshUser } = useAuth()
   // State for files and previews
   const [files, setFiles] = useState<Array<File>>([])
   // Previews handled by individual components to avoid state tainting checks
@@ -169,6 +171,8 @@ function UploadComponent() {
       toast.error(error.message || '部分或全部上传失败')
     } finally {
       setUploading(false)
+      // Upload affects storage usage; refresh user profile so Overview shows latest numbers.
+      void refreshUser()
     }
   }
 
