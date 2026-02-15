@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   ChevronLeft,
@@ -48,6 +48,33 @@ export const Route = createFileRoute('/_admin/admin/images')({
   component: AdminImagesComponent,
 })
 
+type MarqueeMode = 'replace' | 'add' | 'toggle'
+
+function rectFromPoints(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): { left: number; top: number; right: number; bottom: number } {
+  const left = Math.min(x1, x2)
+  const right = Math.max(x1, x2)
+  const top = Math.min(y1, y2)
+  const bottom = Math.max(y1, y2)
+  return { left, top, right, bottom }
+}
+
+function rectsIntersect(
+  a: { left: number; top: number; right: number; bottom: number },
+  b: { left: number; top: number; right: number; bottom: number },
+) {
+  return !(
+    b.left > a.right ||
+    b.right < a.left ||
+    b.top > a.bottom ||
+    b.bottom < a.top
+  )
+}
+
 function AdminImagesComponent() {
   const [images, setImages] = useState<Array<any>>([])
   const [total, setTotal] = useState(0)
@@ -68,6 +95,51 @@ function AdminImagesComponent() {
   // Batch Delete State
   const [selectedIds, setSelectedIds] = useState<Array<number>>([])
   const [showBatchDelete, setShowBatchDelete] = useState(false)
+
+  const visibleIds = useMemo(() => images.map((img) => img.id), [images])
+  const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds])
+  const visibleSelectedCount = useMemo(() => {
+    if (visibleIds.length === 0 || selectedIds.length === 0) return 0
+    let count = 0
+    for (const id of visibleIds) {
+      if (selectedIds.includes(id)) count++
+    }
+    return count
+  }, [visibleIds, selectedIds])
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleSelectedCount === visibleIds.length
+
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+  const suppressOpenRef = useRef(false)
+  const marqueeRef = useRef<{
+    active: boolean
+    dragging: boolean
+    pointerId: number | null
+    startX: number
+    startY: number
+    endX: number
+    endY: number
+    mode: MarqueeMode
+    originSelected: Array<number>
+  }>({
+    active: false,
+    dragging: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    endX: 0,
+    endY: 0,
+    mode: 'replace',
+    originSelected: [],
+  })
+  const [marqueeBox, setMarqueeBox] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+    visible: boolean
+  }>({ left: 0, top: 0, width: 0, height: 0, visible: false })
 
   const loadImages = async () => {
     try {
@@ -110,6 +182,21 @@ function AdminImagesComponent() {
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     )
   }
+
+  const toggleSelectAllVisible = () => {
+    if (visibleIds.length === 0) return
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        for (const id of visibleIds) next.delete(id)
+      } else {
+        for (const id of visibleIds) next.add(id)
+      }
+      return Array.from(next)
+    })
+  }
+
+  const clearSelection = () => setSelectedIds([])
 
   const handleBatchDeleteConfirm = async () => {
     if (selectedIds.length === 0) return
@@ -203,6 +290,158 @@ function AdminImagesComponent() {
     show: { opacity: 1, y: 0 },
   }
 
+  const computeIntersectedVisibleIds = (selection: {
+    left: number
+    top: number
+    right: number
+    bottom: number
+  }) => {
+    const intersected: Array<number> = []
+    for (const [id, el] of itemRefs.current) {
+      if (!visibleIdSet.has(id)) continue
+      const r = el.getBoundingClientRect()
+      const rect = {
+        left: r.left,
+        top: r.top,
+        right: r.right,
+        bottom: r.bottom,
+      }
+      if (rectsIntersect(selection, rect)) intersected.push(id)
+    }
+    return intersected
+  }
+
+  const applyMarqueeSelection = (
+    intersected: Array<number>,
+    mode: MarqueeMode,
+    originSelected: Array<number>,
+  ) => {
+    const originSet = new Set(originSelected)
+    const next = new Set(originSelected)
+
+    if (mode === 'replace') {
+      for (const id of visibleIds) next.delete(id)
+      for (const id of intersected) next.add(id)
+      return Array.from(next)
+    }
+
+    if (mode === 'add') {
+      for (const id of intersected) next.add(id)
+      return Array.from(next)
+    }
+
+    for (const id of intersected) {
+      if (originSet.has(id)) next.delete(id)
+      else next.add(id)
+    }
+    return Array.from(next)
+  }
+
+  const handleMarqueePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+
+    const target = e.target as HTMLElement | null
+    if (
+      target?.closest(
+        '[data-marquee-ignore],button,a,input,textarea,select,label,[role="checkbox"]',
+      )
+    ) {
+      return
+    }
+
+    const grid = gridRef.current
+    if (!grid) return
+
+    const mode: MarqueeMode =
+      e.ctrlKey || e.metaKey ? 'toggle' : e.shiftKey ? 'add' : 'replace'
+
+    marqueeRef.current.active = true
+    marqueeRef.current.dragging = false
+    marqueeRef.current.pointerId = e.pointerId
+    marqueeRef.current.startX = e.clientX
+    marqueeRef.current.startY = e.clientY
+    marqueeRef.current.endX = e.clientX
+    marqueeRef.current.endY = e.clientY
+    marqueeRef.current.mode = mode
+    marqueeRef.current.originSelected = selectedIds
+
+    try {
+      grid.setPointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+
+    setMarqueeBox({ left: 0, top: 0, width: 0, height: 0, visible: false })
+  }
+
+  const handleMarqueePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const state = marqueeRef.current
+    if (!state.active || state.pointerId !== e.pointerId) return
+
+    state.endX = e.clientX
+    state.endY = e.clientY
+
+    const dx = Math.abs(state.endX - state.startX)
+    const dy = Math.abs(state.endY - state.startY)
+    if (!state.dragging && dx + dy >= 6) {
+      state.dragging = true
+    }
+
+    if (!state.dragging) return
+
+    const grid = gridRef.current
+    if (!grid) return
+
+    const gridRect = grid.getBoundingClientRect()
+    const sel = rectFromPoints(
+      state.startX,
+      state.startY,
+      state.endX,
+      state.endY,
+    )
+
+    const left = sel.left - gridRect.left
+    const top = sel.top - gridRect.top
+    const width = sel.right - sel.left
+    const height = sel.bottom - sel.top
+
+    setMarqueeBox({ left, top, width, height, visible: true })
+
+    const intersected = computeIntersectedVisibleIds(sel)
+    const nextSelected = applyMarqueeSelection(
+      intersected,
+      state.mode,
+      state.originSelected,
+    )
+    setSelectedIds(nextSelected)
+  }
+
+  const handleMarqueePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const state = marqueeRef.current
+    if (!state.active || state.pointerId !== e.pointerId) return
+
+    const grid = gridRef.current
+    if (grid) {
+      try {
+        grid.releasePointerCapture(e.pointerId)
+      } catch {
+        // ignore
+      }
+    }
+
+    if (state.dragging) {
+      suppressOpenRef.current = true
+      setTimeout(() => {
+        suppressOpenRef.current = false
+      }, 0)
+    }
+
+    marqueeRef.current.active = false
+    marqueeRef.current.dragging = false
+    marqueeRef.current.pointerId = null
+    setMarqueeBox((prev) => ({ ...prev, visible: false }))
+  }
+
   return (
     <motion.div
       className="space-y-6"
@@ -220,6 +459,24 @@ function AdminImagesComponent() {
         </div>
 
         <div className="flex gap-2 items-center">
+          {images.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAllVisible}
+              title={allVisibleSelected ? '取消选择当前页' : '全选当前页图片'}
+            >
+              {allVisibleSelected ? '取消本页' : '全选本页'}
+              <span className="ml-2 text-xs text-muted-foreground">
+                {visibleSelectedCount}/{visibleIds.length}
+              </span>
+            </Button>
+          )}
+          {selectedIds.length > 0 && (
+            <Button variant="outline" size="sm" onClick={clearSelection}>
+              清空选择
+            </Button>
+          )}
           {selectedIds.length > 0 && (
             <Button
               variant="destructive"
@@ -266,70 +523,97 @@ function AdminImagesComponent() {
       ) : (
         <motion.div
           variants={item}
-          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+          className="relative"
+          ref={gridRef}
+          onPointerDown={handleMarqueePointerDown}
+          onPointerMove={handleMarqueePointerMove}
+          onPointerUp={handleMarqueePointerUp}
+          onPointerCancel={handleMarqueePointerUp}
         >
-          {images.map((img) => (
-            <motion.div
-              layoutId={`admin-img-${img.id}`}
-              key={img.id}
-              className={`group relative bg-card border rounded-lg overflow-hidden cursor-pointer transition-all ${
-                selectedIds.includes(img.id)
-                  ? 'border-primary ring-2 ring-primary ring-offset-2'
-                  : 'hover:shadow-md hover:border-primary/50'
-              }`}
-              onClick={() => setSelectedImage(img)}
-            >
-              <div
-                className="absolute top-2 left-2 z-20"
-                onClick={(e) => e.stopPropagation()}
+          {marqueeBox.visible && (
+            <div
+              className="pointer-events-none absolute z-30 rounded border border-primary/60 bg-primary/10"
+              style={{
+                left: marqueeBox.left,
+                top: marqueeBox.top,
+                width: marqueeBox.width,
+                height: marqueeBox.height,
+              }}
+            />
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {images.map((img) => (
+              <motion.div
+                ref={(el) => {
+                  if (el) itemRefs.current.set(img.id, el)
+                  else itemRefs.current.delete(img.id)
+                }}
+                layoutId={`admin-img-${img.id}`}
+                key={img.id}
+                className={`group relative bg-card border rounded-lg overflow-hidden cursor-pointer transition-all ${
+                  selectedIds.includes(img.id)
+                    ? 'border-primary ring-2 ring-primary ring-offset-2'
+                    : 'hover:shadow-md hover:border-primary/50'
+                }`}
+                onClick={() => {
+                  if (suppressOpenRef.current) return
+                  setSelectedImage(img)
+                }}
               >
-                <Checkbox
-                  checked={selectedIds.includes(img.id)}
-                  onCheckedChange={() => toggleSelect(img.id)}
-                  className="bg-white/80 backdrop-blur-sm data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-slate-400"
-                />
-              </div>
-              <div className="aspect-square bg-muted/30 p-2 overflow-hidden flex items-center justify-center">
-                <img
-                  src={`${imgPrefix}${img.path}`}
-                  className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
-                  alt={img.filename}
-                  loading="lazy"
-                />
-              </div>
-
-              <div className="p-2 space-y-1 bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/75">
                 <div
-                  className="text-xs font-medium truncate"
-                  title={img.filename}
+                  className="absolute top-2 left-2 z-20"
+                  data-marquee-ignore
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {img.filename}
+                  <Checkbox
+                    checked={selectedIds.includes(img.id)}
+                    onCheckedChange={() => toggleSelect(img.id)}
+                    className="bg-white/80 backdrop-blur-sm data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-slate-400"
+                  />
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>ID: {img.id}</span>
-                  <span className="flex items-center gap-1 truncate max-w-[50%]">
-                    <User className="h-3 w-3" />
-                    {img.username}
-                  </span>
+                <div className="aspect-square bg-muted/30 p-2 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={`${imgPrefix}${img.path}`}
+                    className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
+                    alt={img.filename}
+                    loading="lazy"
+                  />
                 </div>
-              </div>
 
-              {/* Hover Actions */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  size="icon"
-                  variant="destructive"
-                  className="h-6 w-6 shadow-sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDelete(img.id)
-                  }}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </motion.div>
-          ))}
+                <div className="p-2 space-y-1 bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/75">
+                  <div
+                    className="text-xs font-medium truncate"
+                    title={img.filename}
+                  >
+                    {img.filename}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>ID: {img.id}</span>
+                    <span className="flex items-center gap-1 truncate max-w-[50%]">
+                      <User className="h-3 w-3" />
+                      {img.username}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hover Actions */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    data-marquee-ignore
+                    size="icon"
+                    variant="destructive"
+                    className="h-6 w-6 shadow-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDelete(img.id)
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </motion.div>
       )}
 
