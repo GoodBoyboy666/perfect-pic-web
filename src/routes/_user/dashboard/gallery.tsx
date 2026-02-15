@@ -115,6 +115,7 @@ function GalleryComponent() {
   const marqueeRef = useRef<{
     active: boolean
     dragging: boolean
+    captured: boolean
     pointerId: number | null
     startX: number
     startY: number
@@ -125,6 +126,7 @@ function GalleryComponent() {
   }>({
     active: false,
     dragging: false,
+    captured: false,
     pointerId: null,
     startX: 0,
     startY: 0,
@@ -347,12 +349,6 @@ function GalleryComponent() {
     marqueeRef.current.mode = mode
     marqueeRef.current.originSelected = selectedIds
 
-    try {
-      grid.setPointerCapture(e.pointerId)
-    } catch {
-      // ignore
-    }
-
     setMarqueeBox({ left: 0, top: 0, width: 0, height: 0, visible: false })
   }
 
@@ -360,19 +356,30 @@ function GalleryComponent() {
     const state = marqueeRef.current
     if (!state.active || state.pointerId !== e.pointerId) return
 
+    const grid = gridRef.current
+    if (!grid) return
+
     state.endX = e.clientX
     state.endY = e.clientY
 
     const dx = Math.abs(state.endX - state.startX)
     const dy = Math.abs(state.endY - state.startY)
-    if (!state.dragging && dx + dy >= 6) {
+    if (!state.dragging && dx + dy >= 8) {
       state.dragging = true
+      // Only capture once we actually start marquee-dragging; otherwise normal click-to-preview breaks.
+      if (!state.captured) {
+        try {
+          grid.setPointerCapture(e.pointerId)
+          state.captured = true
+        } catch {
+          // ignore
+        }
+      }
+      // Prevent native selection/drag behavior during marquee.
+      e.preventDefault()
     }
 
     if (!state.dragging) return
-
-    const grid = gridRef.current
-    if (!grid) return
 
     const gridRect = grid.getBoundingClientRect()
     const sel = rectFromPoints(
@@ -403,7 +410,7 @@ function GalleryComponent() {
     if (!state.active || state.pointerId !== e.pointerId) return
 
     const grid = gridRef.current
-    if (grid) {
+    if (grid && state.captured) {
       try {
         grid.releasePointerCapture(e.pointerId)
       } catch {
@@ -420,6 +427,7 @@ function GalleryComponent() {
 
     marqueeRef.current.active = false
     marqueeRef.current.dragging = false
+    marqueeRef.current.captured = false
     marqueeRef.current.pointerId = null
     setMarqueeBox((prev) => ({ ...prev, visible: false }))
   }
@@ -513,7 +521,7 @@ function GalleryComponent() {
         ) : (
           <div
             ref={gridRef}
-            className="relative"
+            className="relative select-none"
             onPointerDown={handleMarqueePointerDown}
             onPointerMove={handleMarqueePointerMove}
             onPointerUp={handleMarqueePointerUp}
@@ -568,6 +576,8 @@ function GalleryComponent() {
                     alt={img.filename}
                     className="w-full h-full object-contain p-2 transition-transform group-hover:scale-105"
                     loading="lazy"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                   />
 
                   {/* Hover Overlay */}
