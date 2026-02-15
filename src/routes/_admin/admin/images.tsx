@@ -115,6 +115,7 @@ function AdminImagesComponent() {
   const marqueeRef = useRef<{
     active: boolean
     dragging: boolean
+    captured: boolean
     pointerId: number | null
     startX: number
     startY: number
@@ -125,6 +126,7 @@ function AdminImagesComponent() {
   }>({
     active: false,
     dragging: false,
+    captured: false,
     pointerId: null,
     startX: 0,
     startY: 0,
@@ -365,12 +367,6 @@ function AdminImagesComponent() {
     marqueeRef.current.mode = mode
     marqueeRef.current.originSelected = selectedIds
 
-    try {
-      grid.setPointerCapture(e.pointerId)
-    } catch {
-      // ignore
-    }
-
     setMarqueeBox({ left: 0, top: 0, width: 0, height: 0, visible: false })
   }
 
@@ -378,19 +374,28 @@ function AdminImagesComponent() {
     const state = marqueeRef.current
     if (!state.active || state.pointerId !== e.pointerId) return
 
+    const grid = gridRef.current
+    if (!grid) return
+
     state.endX = e.clientX
     state.endY = e.clientY
 
     const dx = Math.abs(state.endX - state.startX)
     const dy = Math.abs(state.endY - state.startY)
-    if (!state.dragging && dx + dy >= 6) {
+    if (!state.dragging && dx + dy >= 8) {
       state.dragging = true
+      if (!state.captured) {
+        try {
+          grid.setPointerCapture(e.pointerId)
+          state.captured = true
+        } catch {
+          // ignore
+        }
+      }
+      e.preventDefault()
     }
 
     if (!state.dragging) return
-
-    const grid = gridRef.current
-    if (!grid) return
 
     const gridRect = grid.getBoundingClientRect()
     const sel = rectFromPoints(
@@ -421,7 +426,7 @@ function AdminImagesComponent() {
     if (!state.active || state.pointerId !== e.pointerId) return
 
     const grid = gridRef.current
-    if (grid) {
+    if (grid && state.captured) {
       try {
         grid.releasePointerCapture(e.pointerId)
       } catch {
@@ -438,6 +443,7 @@ function AdminImagesComponent() {
 
     marqueeRef.current.active = false
     marqueeRef.current.dragging = false
+    marqueeRef.current.captured = false
     marqueeRef.current.pointerId = null
     setMarqueeBox((prev) => ({ ...prev, visible: false }))
   }
@@ -523,7 +529,7 @@ function AdminImagesComponent() {
       ) : (
         <motion.div
           variants={item}
-          className="relative"
+          className="relative select-none"
           ref={gridRef}
           onPointerDown={handleMarqueePointerDown}
           onPointerMove={handleMarqueePointerMove}
@@ -577,6 +583,8 @@ function AdminImagesComponent() {
                     className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105"
                     alt={img.filename}
                     loading="lazy"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
                   />
                 </div>
 
