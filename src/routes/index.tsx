@@ -11,7 +11,7 @@ function App() {
   const { siteInfo } = useSite()
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+    <div className="animated-gradient flex min-h-screen flex-col text-white">
       <motion.header
         className="p-6 flex justify-between items-center"
         initial={{ y: -100, opacity: 0 }}

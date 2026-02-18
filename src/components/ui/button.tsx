@@ -50,6 +50,46 @@ function Button({
     asChild?: boolean
   }) {
   const Comp = asChild ? Slot : 'button'
+  const { onClick, disabled, ...restProps } = props
+
+  const handleClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      onClick?.(event)
+      if (event.defaultPrevented || disabled || variant === 'link') return
+      if (event.button !== 0) return
+
+      const target = event.currentTarget
+      const rect = target.getBoundingClientRect()
+      const rippleSize = Math.max(rect.width, rect.height) * 2
+      const isKeyboardClick = event.clientX === 0 && event.clientY === 0
+      const clientX = isKeyboardClick
+        ? rect.left + rect.width / 2
+        : event.clientX
+      const clientY = isKeyboardClick
+        ? rect.top + rect.height / 2
+        : event.clientY
+      const x = clientX - rect.left - rippleSize / 2
+      const y = clientY - rect.top - rippleSize / 2
+
+      const ripple = document.createElement('span')
+      ripple.className = 'button-ripple'
+      ripple.style.width = `${rippleSize}px`
+      ripple.style.height = `${rippleSize}px`
+      ripple.style.left = `${x}px`
+      ripple.style.top = `${y}px`
+      const duration = Math.round(
+        Math.min(900, Math.max(420, rippleSize * 0.9)),
+      )
+      ripple.style.animationDuration = `${duration}ms`
+
+      target.insertBefore(ripple, target.firstChild)
+
+      const cleanup = () => ripple.remove()
+      ripple.addEventListener('animationend', cleanup, { once: true })
+      window.setTimeout(cleanup, duration + 80)
+    },
+    [onClick, disabled, variant],
+  )
 
   return (
     <Comp
@@ -57,7 +97,9 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
+      disabled={disabled}
+      onClick={handleClick}
+      {...restProps}
     />
   )
 }

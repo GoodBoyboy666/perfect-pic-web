@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { fetchClient } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { Button } from '../../components/ui/button'
 import {
   Card,
@@ -22,6 +23,7 @@ export const Route = createFileRoute('/auth/email-change-verify')({
 
 function EmailChangeVerifyComponent() {
   const { token } = Route.useSearch()
+  const { refreshUser } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     'loading',
   )
@@ -41,7 +43,8 @@ function EmailChangeVerifyComponent() {
           body: { token },
         })
         setStatus('success')
-        setMessage(res.message || '新邮箱验证成功！')
+        setMessage(res.message || '新邮箱验证成功！正在刷新账户信息...')
+        await refreshUser()
       } catch (err: any) {
         setStatus('error')
         setMessage(err.message || '验证失败，链接可能已过期')
@@ -49,7 +52,7 @@ function EmailChangeVerifyComponent() {
     }
 
     setTimeout(verify, 500)
-  }, [token])
+  }, [token, refreshUser])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-zinc-950 p-4">
@@ -95,8 +98,11 @@ function EmailChangeVerifyComponent() {
             </p>
           </CardContent>
           <CardFooter className="justify-center">
-            <Link to="/dashboard/profile">
-              <Button variant={status === 'loading' ? 'ghost' : 'default'}>
+            <Link to={status === 'success' ? '/dashboard/profile' : '/'}>
+              <Button
+                variant={status === 'loading' ? 'ghost' : 'default'}
+                disabled={status === 'loading'}
+              >
                 {status === 'success' ? '返回个人资料' : '返回首页'}
               </Button>
             </Link>
