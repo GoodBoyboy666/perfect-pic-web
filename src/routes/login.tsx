@@ -2,6 +2,8 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { useAuth } from '../context/AuthContext'
+import { fetchClient } from '../lib/api'
+import { runPasskeyAssertion } from '../lib/passkey'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -20,12 +22,56 @@ export const Route = createFileRoute('/login')({
   component: LoginComponent,
 })
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function unwrapResponseData(payload: unknown): Record<string, unknown> | null {
+  if (!isRecord(payload)) return null
+  if (isRecord(payload.data)) return payload.data
+  return payload
+}
+
+function parsePasskeyStartPayload(payload: unknown) {
+  const candidate = unwrapResponseData(payload)
+  if (!candidate) {
+    throw new Error('Passkey 登录初始化失败')
+  }
+
+  const sessionIdRaw = candidate.session_id ?? candidate.sessionId
+  const assertionOptionsRaw =
+    candidate.assertion_options ?? candidate.assertionOptions
+
+  if (typeof sessionIdRaw !== 'string' || sessionIdRaw.trim() === '') {
+    throw new Error('Passkey 会话无效')
+  }
+  if (assertionOptionsRaw === null || assertionOptionsRaw === undefined) {
+    throw new Error('Passkey challenge 无效')
+  }
+
+  return {
+    sessionId: sessionIdRaw,
+    assertionOptions: assertionOptionsRaw,
+  }
+}
+
+function parseToken(payload: unknown): string | null {
+  const candidate = unwrapResponseData(payload)
+  if (!candidate) return null
+
+  const token = candidate.token
+  if (typeof token !== 'string' || token.trim() === '') return null
+
+  return token
+}
+
 function LoginComponent() {
-  const { login, user, isLoading } = useAuth()
+  const { login, refreshUser, user, isLoading } = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const captcha = useCaptcha()
 
   useEffect(() => {
@@ -36,6 +82,7 @@ function LoginComponent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
     try {
       await login({
         username,
@@ -43,9 +90,54 @@ function LoginComponent() {
         ...captcha.getSubmitPayload(),
       })
       // navigate is handled by useEffect
-    } catch (err: any) {
-      setError(err.message || '登录失败')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '登录失败'
+      setError(message)
       captcha.refresh() // Refresh captcha on failure
+    }
+  }
+
+  const handlePasskeyLogin = async () => {
+    if (!username.trim() || !password) {
+      setError('请先输入用户名和密码')
+      return
+    }
+
+    setError('')
+    setIsPasskeyLoading(true)
+    try {
+      const startRes = await fetchClient('/api/auth/passkey/login/start', {
+        method: 'POST',
+        body: {
+          username,
+          password,
+          ...captcha.getSubmitPayload(),
+        },
+      })
+      const { sessionId, assertionOptions } = parsePasskeyStartPayload(startRes)
+      const credential = await runPasskeyAssertion(assertionOptions)
+
+      const finishRes = await fetchClient('/api/auth/passkey/login/finish', {
+        method: 'POST',
+        body: {
+          session_id: sessionId,
+          credential,
+        },
+      })
+
+      const token = parseToken(finishRes)
+      if (!token) {
+        throw new Error('登录失败：服务端未返回 token')
+      }
+
+      localStorage.setItem('token', token)
+      await refreshUser()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Passkey 登录失败'
+      setError(message)
+      captcha.refresh()
+    } finally {
+      setIsPasskeyLoading(false)
     }
   }
 
@@ -81,6 +173,7 @@ function LoginComponent() {
                   placeholder="您的用户名"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  disabled={isPasskeyLoading}
                   required
                 />
               </div>
@@ -100,12 +193,26 @@ function LoginComponent() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isPasskeyLoading}
                   required
                 />
               </div>
               <CaptchaField captcha={captcha} />
-              <Button type="submit" className="w-full">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isPasskeyLoading}
+              >
                 登录
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={isPasskeyLoading}
+                onClick={handlePasskeyLogin}
+              >
+                {isPasskeyLoading ? 'Passkey 验证中...' : '使用 Passkey 登录'}
               </Button>
             </form>
           </CardContent>

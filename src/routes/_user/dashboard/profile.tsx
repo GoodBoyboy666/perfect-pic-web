@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
-import { Lock, Mail, Upload, User } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { KeyRound, Lock, Mail, Trash2, Upload, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
 import { fetchClient } from '../../../lib/api'
+import { runPasskeyRegistration } from '../../../lib/passkey'
 import { useAuth } from '../../../context/AuthContext'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -26,6 +27,88 @@ export const Route = createFileRoute('/_user/dashboard/profile')({
   component: ProfileComponent,
 })
 
+interface PasskeyItem {
+  id: string
+  credentialId: string
+  createdAt: string
+  updatedAt: string
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function unwrapResponseData(payload: unknown): Record<string, unknown> | null {
+  if (!isRecord(payload)) return null
+  if (isRecord(payload.data)) return payload.data
+  return payload
+}
+
+function parsePasskeyRegisterStartPayload(payload: unknown) {
+  const candidate = unwrapResponseData(payload)
+  if (!candidate) {
+    throw new Error('Passkey 初始化失败')
+  }
+
+  const sessionIdRaw = candidate.session_id ?? candidate.sessionId
+  const creationOptionsRaw =
+    candidate.creation_options ?? candidate.creationOptions
+
+  if (typeof sessionIdRaw !== 'string' || sessionIdRaw.trim() === '') {
+    throw new Error('Passkey 会话无效')
+  }
+  if (creationOptionsRaw === null || creationOptionsRaw === undefined) {
+    throw new Error('Passkey challenge 无效')
+  }
+
+  return {
+    sessionId: sessionIdRaw,
+    creationOptions: creationOptionsRaw,
+  }
+}
+
+function parsePasskeyList(payload: unknown): Array<PasskeyItem> {
+  const candidate = unwrapResponseData(payload)
+  if (!candidate || !Array.isArray(candidate.list)) return []
+
+  const parsed: Array<PasskeyItem> = []
+  for (const item of candidate.list) {
+    if (!isRecord(item)) continue
+
+    const idRaw = item.ID ?? item.id
+    if (typeof idRaw !== 'number' && typeof idRaw !== 'string') continue
+
+    const credentialIdRaw =
+      item.CredentialID ?? item.credential_id ?? item.credentialId
+    const createdAtRaw = item.CreatedAt ?? item.created_at ?? item.createdAt
+    const updatedAtRaw = item.UpdatedAt ?? item.updated_at ?? item.updatedAt
+
+    parsed.push({
+      id: String(idRaw),
+      credentialId: typeof credentialIdRaw === 'string' ? credentialIdRaw : '',
+      createdAt: typeof createdAtRaw === 'string' ? createdAtRaw : '',
+      updatedAt: typeof updatedAtRaw === 'string' ? updatedAtRaw : '',
+    })
+  }
+
+  return parsed
+}
+
+function formatDateTime(value: string): string {
+  if (!value) return '-'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  return date.toLocaleString('zh-CN', { hour12: false })
+}
+
+function maskCredentialId(value: string): string {
+  if (!value) return '-'
+  if (value.length <= 20) return value
+  return `${value.slice(0, 12)}...${value.slice(-8)}`
+}
+
 function ProfileComponent() {
   const { user, refreshUser } = useAuth()
   const [username, setUsername] = useState(user?.username || '')
@@ -33,8 +116,28 @@ function ProfileComponent() {
   const [emailPassword, setEmailPassword] = useState('')
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [passkeys, setPasskeys] = useState<Array<PasskeyItem>>([])
+  const [passkeysLoading, setPasskeysLoading] = useState(false)
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false)
+  const [deletingPasskeyId, setDeletingPasskeyId] = useState<string | null>(
+    null,
+  )
   const [avatarPrefix, setAvatarPrefix] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const loadPasskeys = useCallback(async () => {
+    setPasskeysLoading(true)
+    try {
+      const res = await fetchClient('/api/user/passkeys')
+      setPasskeys(parsePasskeyList(res))
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : '获取 Passkey 列表失败'
+      toast.error(message)
+    } finally {
+      setPasskeysLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -48,6 +151,10 @@ function ProfileComponent() {
       .then((res: any) => setAvatarPrefix(res.avatar_prefix))
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    void loadPasskeys()
+  }, [loadPasskeys])
 
   const getAvatarUrl = () => {
     if (!user?.avatar || avatarPrefix === null) return null
@@ -118,6 +225,54 @@ function ProfileComponent() {
       toast.success('密码修改成功')
     } catch (e: any) {
       toast.error(e.message || '修改失败')
+    }
+  }
+
+  const handleRegisterPasskey = async () => {
+    setIsRegisteringPasskey(true)
+    try {
+      const startRes = await fetchClient('/api/user/passkeys/register/start', {
+        method: 'POST',
+      })
+      const { sessionId, creationOptions } =
+        parsePasskeyRegisterStartPayload(startRes)
+      const credential = await runPasskeyRegistration(creationOptions)
+
+      await fetchClient('/api/user/passkeys/register/finish', {
+        method: 'POST',
+        body: {
+          session_id: sessionId,
+          credential,
+        },
+      })
+
+      toast.success('Passkey 添加成功')
+      await loadPasskeys()
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Passkey 添加失败'
+      toast.error(message)
+    } finally {
+      setIsRegisteringPasskey(false)
+    }
+  }
+
+  const handleDeletePasskey = async (id: string) => {
+    if (!window.confirm('确认删除这个 Passkey 吗？')) return
+
+    setDeletingPasskeyId(id)
+    try {
+      await fetchClient(`/api/user/passkeys/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+      toast.success('Passkey 删除成功')
+      await loadPasskeys()
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Passkey 删除失败'
+      toast.error(message)
+    } finally {
+      setDeletingPasskeyId(null)
     }
   }
 
@@ -310,6 +465,80 @@ function ProfileComponent() {
               <div className="pt-2">
                 <Button onClick={handleUpdatePassword}>修改密码</Button>
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Passkey Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>Passkey 设置</CardTitle>
+              <CardDescription>
+                绑定设备生物识别或安全密钥，用于无密码二次验证登录
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  已绑定 {passkeys.length} 个 Passkey
+                </p>
+                <Button
+                  onClick={handleRegisterPasskey}
+                  disabled={isRegisteringPasskey || deletingPasskeyId !== null}
+                >
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  {isRegisteringPasskey ? '添加中...' : '添加 Passkey'}
+                </Button>
+              </div>
+
+              {passkeysLoading ? (
+                <p className="text-sm text-muted-foreground">
+                  正在加载 Passkey...
+                </p>
+              ) : passkeys.length === 0 ? (
+                <p className="text-sm text-muted-foreground">暂无 Passkey</p>
+              ) : (
+                <div className="space-y-3">
+                  {passkeys.map((passkey) => {
+                    const isDeleting = deletingPasskeyId === passkey.id
+                    return (
+                      <div
+                        key={passkey.id}
+                        className="rounded-md border p-3 flex items-start justify-between gap-3"
+                      >
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-medium break-all">
+                            Credential: {maskCredentialId(passkey.credentialId)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            ID: {passkey.id}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            创建时间: {formatDateTime(passkey.createdAt)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            更新时间: {formatDateTime(passkey.updatedAt)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={isDeleting || isRegisteringPasskey}
+                          onClick={() => handleDeletePasskey(passkey.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {isDeleting ? '删除中...' : '删除'}
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
