@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { useAuth } from '../context/AuthContext'
 import { fetchClient } from '../lib/api'
@@ -65,6 +65,26 @@ function parseToken(payload: unknown): string | null {
   return token
 }
 
+function buildPasskeyStartBody(params: {
+  username: string
+  password: string
+  captchaPayload: Record<string, string>
+}) {
+  const body: Record<string, string> = {
+    ...params.captchaPayload,
+  }
+
+  const username = params.username.trim()
+  if (username !== '') {
+    body.username = username
+  }
+  if (params.password !== '') {
+    body.password = params.password
+  }
+
+  return body
+}
+
 function LoginComponent() {
   const { login, refreshUser, user, isLoading } = useAuth()
   const navigate = useNavigate()
@@ -72,6 +92,7 @@ function LoginComponent() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
+  const formRef = useRef<HTMLFormElement | null>(null)
   const captcha = useCaptcha()
 
   useEffect(() => {
@@ -80,13 +101,36 @@ function LoginComponent() {
     }
   }, [user, isLoading, navigate])
 
+  const getCredentialInputs = (form?: HTMLFormElement) => {
+    const targetForm = form ?? formRef.current
+    const formData = targetForm ? new FormData(targetForm) : null
+
+    const usernameFromForm = formData?.get('username')
+    const passwordFromForm = formData?.get('password')
+
+    const resolvedUsername =
+      typeof usernameFromForm === 'string' && usernameFromForm.trim() !== ''
+        ? usernameFromForm
+        : username
+    const resolvedPassword =
+      typeof passwordFromForm === 'string' && passwordFromForm !== ''
+        ? passwordFromForm
+        : password
+
+    return {
+      username: resolvedUsername,
+      password: resolvedPassword,
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    const credentials = getCredentialInputs(e.currentTarget as HTMLFormElement)
     try {
       await login({
-        username,
-        password,
+        username: credentials.username,
+        password: credentials.password,
         ...captcha.getSubmitPayload(),
       })
       // navigate is handled by useEffect
@@ -98,21 +142,18 @@ function LoginComponent() {
   }
 
   const handlePasskeyLogin = async () => {
-    if (!username.trim() || !password) {
-      setError('请先输入用户名和密码')
-      return
-    }
+    const credentials = getCredentialInputs()
 
     setError('')
     setIsPasskeyLoading(true)
     try {
       const startRes = await fetchClient('/api/auth/passkey/login/start', {
         method: 'POST',
-        body: {
-          username,
-          password,
-          ...captcha.getSubmitPayload(),
-        },
+        body: buildPasskeyStartBody({
+          username: credentials.username,
+          password: credentials.password,
+          captchaPayload: captcha.getSubmitPayload(),
+        }),
       })
       const { sessionId, assertionOptions } = parsePasskeyStartPayload(startRes)
       const credential = await runPasskeyAssertion(assertionOptions)
@@ -159,7 +200,7 @@ function LoginComponent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="text-destructive text-sm text-center font-medium">
                   {error}
@@ -169,6 +210,7 @@ function LoginComponent() {
                 <Label htmlFor="username">用户名</Label>
                 <Input
                   id="username"
+                  name="username"
                   type="text"
                   placeholder="您的用户名"
                   value={username}
@@ -189,6 +231,7 @@ function LoginComponent() {
                 </div>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
