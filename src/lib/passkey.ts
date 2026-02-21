@@ -273,57 +273,67 @@ function parseExcludeCredentials(
   return parsed.length > 0 ? parsed : undefined
 }
 
-export function toPublicKeyCreationOptions(
-  creationOptions: unknown,
-): PublicKeyCredentialCreationOptions {
-  if (!isRecord(creationOptions)) {
+function unwrapPublicKeyOptions(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
     throw new Error('Passkey challenge 无效')
   }
 
-  const challengeRaw = creationOptions.challenge
+  if (isRecord(value.publicKey)) {
+    return value.publicKey
+  }
+
+  return value
+}
+
+export function toPublicKeyCreationOptions(
+  creationOptions: unknown,
+): PublicKeyCredentialCreationOptions {
+  const optionsSource = unwrapPublicKeyOptions(creationOptions)
+
+  const challengeRaw = optionsSource.challenge
   if (typeof challengeRaw !== 'string' || challengeRaw.trim() === '') {
     throw new Error('Passkey challenge 缺失')
   }
 
   const options: PublicKeyCredentialCreationOptions = {
     challenge: decodeBase64Like(challengeRaw),
-    rp: parseRpEntity(creationOptions.rp),
-    user: parseUserEntity(creationOptions.user),
+    rp: parseRpEntity(optionsSource.rp),
+    user: parseUserEntity(optionsSource.user),
     pubKeyCredParams: parsePublicKeyCredentialParameters(
-      creationOptions.pubKeyCredParams ?? creationOptions.pub_key_cred_params,
+      optionsSource.pubKeyCredParams ?? optionsSource.pub_key_cred_params,
     ),
   }
 
-  const timeout = parseTimeout(creationOptions.timeout)
+  const timeout = parseTimeout(optionsSource.timeout)
   if (timeout !== undefined) {
     options.timeout = timeout
   }
 
   const attestation = parseAttestationConveyancePreference(
-    creationOptions.attestation,
+    optionsSource.attestation,
   )
   if (attestation !== undefined) {
     options.attestation = attestation
   }
 
   const authenticatorSelection = parseAuthenticatorSelection(
-    creationOptions.authenticatorSelection ??
-      creationOptions.authenticator_selection,
+    optionsSource.authenticatorSelection ??
+      optionsSource.authenticator_selection,
   )
   if (authenticatorSelection !== undefined) {
     options.authenticatorSelection = authenticatorSelection
   }
 
   const excludeCredentials = parseExcludeCredentials(
-    creationOptions.excludeCredentials ?? creationOptions.exclude_credentials,
+    optionsSource.excludeCredentials ?? optionsSource.exclude_credentials,
   )
   if (excludeCredentials !== undefined) {
     options.excludeCredentials = excludeCredentials
   }
 
-  if (isRecord(creationOptions.extensions)) {
+  if (isRecord(optionsSource.extensions)) {
     options.extensions =
-      creationOptions.extensions as AuthenticationExtensionsClientInputs
+      optionsSource.extensions as AuthenticationExtensionsClientInputs
   }
 
   return options
@@ -332,11 +342,9 @@ export function toPublicKeyCreationOptions(
 export function toPublicKeyRequestOptions(
   assertionOptions: unknown,
 ): PublicKeyCredentialRequestOptions {
-  if (!isRecord(assertionOptions)) {
-    throw new Error('Passkey challenge 无效')
-  }
+  const optionsSource = unwrapPublicKeyOptions(assertionOptions)
 
-  const challengeRaw = assertionOptions.challenge
+  const challengeRaw = optionsSource.challenge
   if (typeof challengeRaw !== 'string' || challengeRaw.trim() === '') {
     throw new Error('Passkey challenge 缺失')
   }
@@ -345,34 +353,34 @@ export function toPublicKeyRequestOptions(
     challenge: decodeBase64Like(challengeRaw),
   }
 
-  const rpIdRaw = assertionOptions.rpId ?? assertionOptions.rp_id
+  const rpIdRaw = optionsSource.rpId ?? optionsSource.rp_id
   if (typeof rpIdRaw === 'string' && rpIdRaw.trim() !== '') {
     options.rpId = rpIdRaw
   }
 
-  const timeoutRaw = assertionOptions.timeout
+  const timeoutRaw = optionsSource.timeout
   const timeout = parseTimeout(timeoutRaw)
   if (timeout !== undefined) {
     options.timeout = timeout
   }
 
   const userVerificationRaw =
-    assertionOptions.userVerification ?? assertionOptions.user_verification
+    optionsSource.userVerification ?? optionsSource.user_verification
   const userVerification = parseUserVerification(userVerificationRaw)
   if (userVerification !== undefined) {
     options.userVerification = userVerification
   }
 
   const allowCredentialsRaw =
-    assertionOptions.allowCredentials ?? assertionOptions.allow_credentials
+    optionsSource.allowCredentials ?? optionsSource.allow_credentials
   const allowCredentials = parseAllowCredentials(allowCredentialsRaw)
   if (allowCredentials !== undefined) {
     options.allowCredentials = allowCredentials
   }
 
-  if (isRecord(assertionOptions.extensions)) {
+  if (isRecord(optionsSource.extensions)) {
     options.extensions =
-      assertionOptions.extensions as AuthenticationExtensionsClientInputs
+      optionsSource.extensions as AuthenticationExtensionsClientInputs
   }
 
   return options
