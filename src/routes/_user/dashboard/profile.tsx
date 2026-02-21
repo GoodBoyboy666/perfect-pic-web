@@ -30,8 +30,8 @@ export const Route = createFileRoute('/_user/dashboard/profile')({
 interface PasskeyItem {
   id: string
   credentialId: string
-  createdAt: string
-  updatedAt: string
+  name: string
+  createdAtUnix: number | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -80,25 +80,32 @@ function parsePasskeyList(payload: unknown): Array<PasskeyItem> {
 
     const credentialIdRaw =
       item.CredentialID ?? item.credential_id ?? item.credentialId
-    const createdAtRaw = item.CreatedAt ?? item.created_at ?? item.createdAt
-    const updatedAtRaw = item.UpdatedAt ?? item.updated_at ?? item.updatedAt
+    const nameRaw = item.name ?? item.Name
+    const createdAtRaw = item.created_at ?? item.createdAt ?? item.CreatedAt
+
+    const createdAtNumber =
+      typeof createdAtRaw === 'number'
+        ? createdAtRaw
+        : typeof createdAtRaw === 'string' && createdAtRaw.trim() !== ''
+          ? Number(createdAtRaw)
+          : Number.NaN
 
     parsed.push({
       id: String(idRaw),
       credentialId: typeof credentialIdRaw === 'string' ? credentialIdRaw : '',
-      createdAt: typeof createdAtRaw === 'string' ? createdAtRaw : '',
-      updatedAt: typeof updatedAtRaw === 'string' ? updatedAtRaw : '',
+      name: typeof nameRaw === 'string' ? nameRaw : '',
+      createdAtUnix: Number.isFinite(createdAtNumber) ? createdAtNumber : null,
     })
   }
 
   return parsed
 }
 
-function formatDateTime(value: string): string {
-  if (!value) return '-'
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
+function formatDateTimeFromUnix(value: number | null): string {
+  if (value === null) return '-'
+  const timeMs = value > 1_000_000_000_000 ? value : value * 1000
+  const date = new Date(timeMs)
+  if (Number.isNaN(date.getTime())) return String(value)
 
   return date.toLocaleString('zh-CN', { hour12: false })
 }
@@ -120,6 +127,11 @@ function ProfileComponent() {
   const [passkeysLoading, setPasskeysLoading] = useState(false)
   const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false)
   const [deletingPasskeyId, setDeletingPasskeyId] = useState<string | null>(
+    null,
+  )
+  const [editingPasskeyId, setEditingPasskeyId] = useState<string | null>(null)
+  const [editingPasskeyName, setEditingPasskeyName] = useState('')
+  const [renamingPasskeyId, setRenamingPasskeyId] = useState<string | null>(
     null,
   )
   const [avatarPrefix, setAvatarPrefix] = useState<string | null>(null)
@@ -273,6 +285,44 @@ function ProfileComponent() {
       toast.error(message)
     } finally {
       setDeletingPasskeyId(null)
+    }
+  }
+
+  const beginRenamePasskey = (passkey: PasskeyItem) => {
+    setEditingPasskeyId(passkey.id)
+    setEditingPasskeyName(passkey.name)
+  }
+
+  const cancelRenamePasskey = () => {
+    setEditingPasskeyId(null)
+    setEditingPasskeyName('')
+  }
+
+  const handleRenamePasskey = async (id: string) => {
+    const normalizedName = editingPasskeyName.trim()
+    if (normalizedName.length > 64) {
+      toast.error('Passkey 名称最长 64 字符')
+      return
+    }
+
+    setRenamingPasskeyId(id)
+    try {
+      await fetchClient(`/api/user/passkeys/${encodeURIComponent(id)}/name`, {
+        method: 'PATCH',
+        body: {
+          name: normalizedName,
+        },
+      })
+      toast.success('Passkey 名称修改成功')
+      setEditingPasskeyId(null)
+      setEditingPasskeyName('')
+      await loadPasskeys()
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Passkey 名称修改失败'
+      toast.error(message)
+    } finally {
+      setRenamingPasskeyId(null)
     }
   }
 
@@ -489,7 +539,11 @@ function ProfileComponent() {
                 </p>
                 <Button
                   onClick={handleRegisterPasskey}
-                  disabled={isRegisteringPasskey || deletingPasskeyId !== null}
+                  disabled={
+                    isRegisteringPasskey ||
+                    deletingPasskeyId !== null ||
+                    renamingPasskeyId !== null
+                  }
                 >
                   <KeyRound className="mr-2 h-4 w-4" />
                   {isRegisteringPasskey ? '添加中...' : '添加 Passkey'}
@@ -506,6 +560,8 @@ function ProfileComponent() {
                 <div className="space-y-3">
                   {passkeys.map((passkey) => {
                     const isDeleting = deletingPasskeyId === passkey.id
+                    const isEditing = editingPasskeyId === passkey.id
+                    const isRenaming = renamingPasskeyId === passkey.id
                     return (
                       <div
                         key={passkey.id}
@@ -513,27 +569,80 @@ function ProfileComponent() {
                       >
                         <div className="min-w-0 space-y-1">
                           <p className="text-sm font-medium break-all">
+                            名称: {passkey.name || '(未命名)'}
+                          </p>
+                          <p className="text-sm font-medium break-all">
                             Credential: {maskCredentialId(passkey.credentialId)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             ID: {passkey.id}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            创建时间: {formatDateTime(passkey.createdAt)}
+                            创建时间: {formatDateTimeFromUnix(passkey.createdAtUnix)}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            更新时间: {formatDateTime(passkey.updatedAt)}
-                          </p>
+                          {isEditing && (
+                            <div className="pt-2 space-y-2 max-w-sm">
+                              <Input
+                                value={editingPasskeyName}
+                                onChange={(e) =>
+                                  setEditingPasskeyName(e.target.value.slice(0, 64))
+                                }
+                                maxLength={64}
+                                placeholder="输入 Passkey 名称"
+                                disabled={isRenaming}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                {editingPasskeyName.length}/64
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={isDeleting || isRegisteringPasskey}
-                          onClick={() => handleDeletePasskey(passkey.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {isDeleting ? '删除中...' : '删除'}
-                        </Button>
+                        <div className="flex flex-col gap-2 shrink-0">
+                          {isEditing ? (
+                            <>
+                              <Button
+                                size="sm"
+                                disabled={isRenaming || isDeleting || isRegisteringPasskey}
+                                onClick={() => handleRenamePasskey(passkey.id)}
+                              >
+                                {isRenaming ? '保存中...' : '保存名称'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isRenaming || isDeleting}
+                                onClick={cancelRenamePasskey}
+                              >
+                                取消
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={
+                                deletingPasskeyId !== null ||
+                                renamingPasskeyId !== null ||
+                                isRegisteringPasskey
+                              }
+                              onClick={() => beginRenamePasskey(passkey)}
+                            >
+                              重命名
+                            </Button>
+                          )}
+
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={
+                              isDeleting || isRegisteringPasskey || renamingPasskeyId !== null
+                            }
+                            onClick={() => handleDeletePasskey(passkey.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {isDeleting ? '删除中...' : '删除'}
+                          </Button>
+                        </div>
                       </div>
                     )
                   })}
