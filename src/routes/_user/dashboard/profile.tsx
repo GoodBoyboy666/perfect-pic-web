@@ -529,7 +529,7 @@ function ProfileComponent() {
             <CardHeader>
               <CardTitle>Passkey 设置</CardTitle>
               <CardDescription>
-                绑定设备生物识别或安全密钥，用于无密码二次验证登录
+                绑定设备生物识别或安全密钥，用于无密码登录
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -575,17 +575,17 @@ function ProfileComponent() {
                             Credential: {maskCredentialId(passkey.credentialId)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            ID: {passkey.id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            创建时间: {formatDateTimeFromUnix(passkey.createdAtUnix)}
+                            创建时间:{' '}
+                            {formatDateTimeFromUnix(passkey.createdAtUnix)}
                           </p>
                           {isEditing && (
                             <div className="pt-2 space-y-2 max-w-sm">
                               <Input
                                 value={editingPasskeyName}
                                 onChange={(e) =>
-                                  setEditingPasskeyName(e.target.value.slice(0, 64))
+                                  setEditingPasskeyName(
+                                    e.target.value.slice(0, 64),
+                                  )
                                 }
                                 maxLength={64}
                                 placeholder="输入 Passkey 名称"
@@ -602,7 +602,11 @@ function ProfileComponent() {
                             <>
                               <Button
                                 size="sm"
-                                disabled={isRenaming || isDeleting || isRegisteringPasskey}
+                                disabled={
+                                  isRenaming ||
+                                  isDeleting ||
+                                  isRegisteringPasskey
+                                }
                                 onClick={() => handleRenamePasskey(passkey.id)}
                               >
                                 {isRenaming ? '保存中...' : '保存名称'}
@@ -635,7 +639,9 @@ function ProfileComponent() {
                             variant="destructive"
                             size="sm"
                             disabled={
-                              isDeleting || isRegisteringPasskey || renamingPasskeyId !== null
+                              isDeleting ||
+                              isRegisteringPasskey ||
+                              renamingPasskeyId !== null
                             }
                             onClick={() => handleDeletePasskey(passkey.id)}
                           >
