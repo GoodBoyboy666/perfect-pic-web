@@ -35,6 +35,17 @@ export const Route = createFileRoute('/_admin/admin/settings')({
   component: AdminSettingsComponent,
 })
 
+const SENSITIVE_PLACEHOLDER = '******'
+
+type AdminSetting = {
+  Key: string
+  Value: string
+  Desc: string
+  Category?: string
+  Sensitive?: boolean
+  Placeholder?: string
+}
+
 function CaptchaTestPanel() {
   const captcha = useCaptcha()
   const hasToken = !!captcha.captchaToken
@@ -94,34 +105,31 @@ function CaptchaTestPanel() {
 }
 
 function AdminSettingsComponent() {
-  const [settings, setSettings] = useState<
-    Array<{
-      Key: string
-      Value: string
-      Desc: string
-      Category?: string
-      Sensitive?: boolean
-    }>
-  >([])
-  const [originalSettings, setOriginalSettings] = useState<
-    Array<{
-      Key: string
-      Value: string
-      Desc: string
-      Category?: string
-      Sensitive?: boolean
-    }>
-  >([])
+  const [settings, setSettings] = useState<Array<AdminSetting>>([])
+  const [originalSettings, setOriginalSettings] = useState<Array<AdminSetting>>(
+    [],
+  )
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
+
+  const normalizeSettings = (data: Array<AdminSetting>) =>
+    data.map((setting) => {
+      if (!setting.Sensitive) return setting
+      return {
+        ...setting,
+        Placeholder: setting.Value || SENSITIVE_PLACEHOLDER,
+        Value: '',
+      }
+    })
 
   const loadSettings = async () => {
     try {
       const res = await fetchClient('/api/admin/settings')
       const data = Array.isArray(res) ? res : []
-      setSettings(data)
+      const normalizedData = normalizeSettings(data)
+      setSettings(normalizedData)
       // Deep copy to avoid reference issues
-      setOriginalSettings(JSON.parse(JSON.stringify(data)))
+      setOriginalSettings(JSON.parse(JSON.stringify(normalizedData)))
     } catch (error: any) {
       toast.error(error.message || '加载设置失败')
     }
@@ -291,6 +299,15 @@ function AdminSettingsComponent() {
                             </Select>
                           ) : (
                             <Input
+                              type={setting.Sensitive ? 'password' : 'text'}
+                              placeholder={
+                                setting.Sensitive
+                                  ? setting.Placeholder || SENSITIVE_PLACEHOLDER
+                                  : undefined
+                              }
+                              autoComplete={
+                                setting.Sensitive ? 'new-password' : undefined
+                              }
                               value={setting.Value}
                               onChange={(e) =>
                                 handleChange(setting.Key, e.target.value)
