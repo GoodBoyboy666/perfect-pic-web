@@ -498,7 +498,7 @@ function AdminUsersComponent() {
             {users.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={4}
+                  colSpan={7}
                   className="h-24 text-center text-muted-foreground"
                 >
                   暂无用户数据

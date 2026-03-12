@@ -1,6 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { KeyRound, Lock, Mail, Trash2, Upload, User } from 'lucide-react'
+import {
+  Check,
+  KeyRound,
+  Lock,
+  Mail,
+  Pencil,
+  Trash2,
+  Upload,
+  User,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'motion/react'
 import { fetchClient } from '../../../lib/api'
@@ -21,6 +31,17 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '../../../components/ui/avatar'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../../components/ui/alert-dialog'
 import { Separator } from '../../../components/ui/separator'
 
 export const Route = createFileRoute('/_user/dashboard/profile')({
@@ -134,6 +155,9 @@ function ProfileComponent() {
   const [renamingPasskeyId, setRenamingPasskeyId] = useState<string | null>(
     null,
   )
+  const [confirmDeletePasskeyId, setConfirmDeletePasskeyId] = useState<
+    string | null
+  >(null)
   const [avatarPrefix, setAvatarPrefix] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -270,14 +294,13 @@ function ProfileComponent() {
   }
 
   const handleDeletePasskey = async (id: string) => {
-    if (!window.confirm('确认删除这个 Passkey 吗？')) return
-
     setDeletingPasskeyId(id)
     try {
       await fetchClient(`/api/user/passkeys/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       })
       toast.success('Passkey 删除成功')
+      setConfirmDeletePasskeyId(null)
       await loadPasskeys()
     } catch (error: unknown) {
       const message =
@@ -571,7 +594,7 @@ function ProfileComponent() {
                           <p className="text-sm font-medium break-all">
                             名称: {passkey.name || '(未命名)'}
                           </p>
-                          <p className="text-sm font-medium break-all">
+                          <p className="text-xs text-muted-foreground break-all">
                             Credential: {maskCredentialId(passkey.credentialId)}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -601,53 +624,95 @@ function ProfileComponent() {
                           {isEditing ? (
                             <>
                               <Button
-                                size="sm"
+                                size="icon-sm"
+                                variant="outline"
                                 disabled={
                                   isRenaming ||
                                   isDeleting ||
                                   isRegisteringPasskey
                                 }
                                 onClick={() => handleRenamePasskey(passkey.id)}
+                                aria-label="保存 Passkey 名称"
+                                title="保存名称"
                               >
-                                {isRenaming ? '保存中...' : '保存名称'}
+                                <Check className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
-                                size="sm"
+                                size="icon-sm"
                                 disabled={isRenaming || isDeleting}
                                 onClick={cancelRenamePasskey}
+                                aria-label="取消重命名"
+                                title="取消"
                               >
-                                取消
+                                <X className="h-4 w-4" />
                               </Button>
                             </>
                           ) : (
                             <Button
                               variant="outline"
-                              size="sm"
+                              size="icon-sm"
                               disabled={
                                 deletingPasskeyId !== null ||
                                 renamingPasskeyId !== null ||
                                 isRegisteringPasskey
                               }
                               onClick={() => beginRenamePasskey(passkey)}
+                              aria-label="重命名 Passkey"
+                              title="重命名"
                             >
-                              重命名
+                              <Pencil className="h-4 w-4" />
                             </Button>
                           )}
 
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={
-                              isDeleting ||
-                              isRegisteringPasskey ||
-                              renamingPasskeyId !== null
+                          <AlertDialog
+                            open={confirmDeletePasskeyId === passkey.id}
+                            onOpenChange={(open) =>
+                              setConfirmDeletePasskeyId(
+                                open ? passkey.id : null,
+                              )
                             }
-                            onClick={() => handleDeletePasskey(passkey.id)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {isDeleting ? '删除中...' : '删除'}
-                          </Button>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="icon-sm"
+                                disabled={
+                                  isDeleting ||
+                                  isRegisteringPasskey ||
+                                  renamingPasskeyId !== null
+                                }
+                                aria-label="删除 Passkey"
+                                title="删除"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent size="sm">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  确认删除 Passkey？
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  删除后该设备将无法继续使用此 Passkey 登录。
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isDeleting}>
+                                  取消
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  variant="destructive"
+                                  disabled={isDeleting}
+                                  onClick={() =>
+                                    handleDeletePasskey(passkey.id)
+                                  }
+                                >
+                                  {isDeleting ? '删除中...' : '确认删除'}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     )
