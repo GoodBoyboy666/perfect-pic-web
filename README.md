@@ -1,5 +1,8 @@
 # Perfect Pic Web
 
+> [!TIP]
+> 为方便管理，前端仓库现已合并至[后端仓库](https://github.com/GoodBoyboy666/perfect-pic)，当前仓库已归档。
+
 Perfect Pic Web 是 [Perfect Pic Server](https://github.com/GoodBoyboy666/perfect-pic-server) 项目的前端实现。这是一个基于现代 Web 技术栈构建的图片管理系统前端，提供了用户画廊、上传功能以及完整的后台管理界面。本项目由AI编写。
 
 ## ✨ 特性
